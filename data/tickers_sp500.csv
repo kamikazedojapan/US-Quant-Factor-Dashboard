@@ -1,0 +1,50 @@
+ticker,company,sector,industry
+AAPL,Apple Inc.,Information Technology,Technology Hardware
+MSFT,Microsoft Corporation,Information Technology,Software
+NVDA,NVIDIA Corporation,Information Technology,Semiconductors
+AMZN,Amazon.com Inc.,Consumer Discretionary,Internet Retail
+GOOGL,Alphabet Inc. Class A,Communication Services,Internet Services
+GOOG,Alphabet Inc. Class C,Communication Services,Internet Services
+META,Meta Platforms Inc.,Communication Services,Internet Services
+TSLA,Tesla Inc.,Consumer Discretionary,Automobiles
+BRK-B,Berkshire Hathaway Inc.,Financials,Multi-Sector Holdings
+JPM,JPMorgan Chase & Co.,Financials,Banks
+V,Visa Inc.,Financials,Payments
+MA,Mastercard Inc.,Financials,Payments
+UNH,UnitedHealth Group Inc.,Health Care,Managed Health Care
+LLY,Eli Lilly and Company,Health Care,Pharmaceuticals
+JNJ,Johnson & Johnson,Health Care,Pharmaceuticals
+XOM,Exxon Mobil Corporation,Energy,Oil Gas
+PG,Procter & Gamble Company,Consumer Staples,Household Products
+AVGO,Broadcom Inc.,Information Technology,Semiconductors
+HD,Home Depot Inc.,Consumer Discretionary,Home Improvement Retail
+COST,Costco Wholesale Corporation,Consumer Staples,Retail
+ABBV,AbbVie Inc.,Health Care,Pharmaceuticals
+MRK,Merck & Co. Inc.,Health Care,Pharmaceuticals
+KO,Coca-Cola Company,Consumer Staples,Beverages
+PEP,PepsiCo Inc.,Consumer Staples,Beverages
+BAC,Bank of America Corporation,Financials,Banks
+CRM,Salesforce Inc.,Information Technology,Software
+NFLX,Netflix Inc.,Communication Services,Entertainment
+AMD,Advanced Micro Devices Inc.,Information Technology,Semiconductors
+ADBE,Adobe Inc.,Information Technology,Software
+WMT,Walmart Inc.,Consumer Staples,Retail
+MCD,McDonald's Corporation,Consumer Discretionary,Restaurants
+CSCO,Cisco Systems Inc.,Information Technology,Communications Equipment
+ORCL,Oracle Corporation,Information Technology,Software
+INTC,Intel Corporation,Information Technology,Semiconductors
+DIS,Walt Disney Company,Communication Services,Entertainment
+PFE,Pfizer Inc.,Health Care,Pharmaceuticals
+TMO,Thermo Fisher Scientific Inc.,Health Care,Life Sciences
+ABT,Abbott Laboratories,Health Care,Health Care Equipment
+NKE,Nike Inc.,Consumer Discretionary,Apparel
+CMCSA,Comcast Corporation,Communication Services,Media
+QCOM,Qualcomm Inc.,Information Technology,Semiconductors
+TXN,Texas Instruments Inc.,Information Technology,Semiconductors
+HON,Honeywell International Inc.,Industrials,Industrial Conglomerates
+IBM,International Business Machines Corporation,Information Technology,IT Services
+GE,GE Aerospace,Industrials,Aerospace Defense
+CAT,Caterpillar Inc.,Industrials,Machinery
+GS,Goldman Sachs Group Inc.,Financials,Capital Markets
+MS,Morgan Stanley,Financials,Capital Markets
+BA,Boeing Company,Industrials,Aerospace Defense
