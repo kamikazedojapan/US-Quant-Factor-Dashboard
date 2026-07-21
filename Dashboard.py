@@ -6,6 +6,8 @@ import plotly.express as px
 import streamlit as st
 import yfinance as yf
 
+from src.factors import calculate_price_volume_factor_scores
+
 st.set_page_config(
     page_title="US Quant Factor Dashboard",
     page_icon="📊",
@@ -32,39 +34,41 @@ def get_sp500_tickers():
         st.stop()
 
 @st.cache_data(show_spinner=True)
-def download_prices(tickers, start_date, end_date):
-    """
-    Baixa preços ajustados dos tickers selecionados usando yfinance.
-    """
-    if not tickers:
-        return pd.DataFrame()
+def download_market_data(tickers, start_date, end_date):
+  """
+  Baixa preços ajustados e volume dos tickers selecionados usando yfinance
+  """
+  if not tickers:
+    return pd.DataFrame(), pd.DataFrame
 
-    data = yf.download(
-        tickers,
-        start=start_date,
-        end=end_date,
-        auto_adjust=True,
-        progress=False,
-        group_by="column",
-    )
+  data = yf.download(
+    tickers,
+    start=start_date,
+    end=end_date,
+    auto_adjust=True,
+    progress=False,
+    group_by="column",
+  )
 
-    if data.empty:
-        return pd.DataFrame()
+  if data.empty:
+    return pd.DataFrame, pd.DataFrame
 
-    if isinstance(data.columns, pd.MultiIndex):
-        prices = data["Close"].copy()
-    else:
-        prices = data[["Close"]].copy()
-        prices.columns = tickers
+  if isinstance(data.columns, pd.MultiIndex):
+    prices = data["Close"].copy()
+    volumes = data["Volume"].copy()
+  else:
+    ticker = tickers[0]
 
-    if isinstance(prices, pd.Series):
-        prices = prices.to_frame()
+    prices = data[["Close"]].copy()
+    prices.columns = [ticker]
 
-    prices = prices.sort_index()
-    prices = prices.dropna(how="all")
+    volumes = data[["Volume"]].copy()
+    volumes.columns = [ticker]
 
-    return prices
+  prices = prices.sort_index().dropna(how="all")
+  volumes = volumes.sort_index().dropna(how="all")
 
+  return prices, volumes
 
 def calculate_asset_metrics(prices):
     """
@@ -255,7 +259,7 @@ if show_spy and "SPY" not in download_tickers:
     download_tickers.append("SPY")
 
 with st.spinner("Baixando dados de mercado..."):
-    prices = download_prices(download_tickers, start_date, end_date)
+    prices, volumes = download_market_data(download_tickers, start_date, end_date)
 
 if prices.empty:
     st.error("Não foi possível baixar os dados. Verifique os tickers ou o período escolhido.")
@@ -269,6 +273,12 @@ if not available_selected_tickers:
 
 metrics = calculate_asset_metrics(prices)
 normalized_prices = normalize_prices(prices)
+
+factor_scores = calculate_price_volume_factor_scores(
+  prices=prices,
+  volumes=volumes,
+  benchmark="SPY",
+)
 
 portfolio = calculate_equal_weight_portfolio(
     prices=prices,
@@ -299,6 +309,48 @@ if portfolio:
     performance_df["Carteira Equal Weight"] = portfolio["curve"]
 
 st.line_chart(performance_df)
+
+st.subheader("Ranking Quantitativo Preliminar")
+
+ranking_view = factor_scores.copy()
+
+if "SPY" in ranking_view.index:
+    ranking_view = ranking_view.drop(index="SPY")
+
+st.dataframe(
+    ranking_view[
+        [
+            "score_momentum",
+            "score_risco",
+            "score_liquidez",
+            "score_preliminar",
+            "retorno_3m",
+            "retorno_6m",
+            "retorno_12m",
+            "volatilidade_252d",
+            "beta",
+            "max_drawdown_252d",
+            "volume_medio_60d",
+            "dollar_volume_60d",
+        ]
+    ].style.format(
+        {
+            "score_momentum": "{:.2f}",
+            "score_risco": "{:.2f}",
+            "score_liquidez": "{:.2f}",
+            "score_preliminar": "{:.2f}",
+            "retorno_3m": "{:.2%}",
+            "retorno_6m": "{:.2%}",
+            "retorno_12m": "{:.2%}",
+            "volatilidade_252d": "{:.2%}",
+            "beta": "{:.2f}",
+            "max_drawdown_252d": "{:.2%}",
+            "volume_medio_60d": "{:,.0f}",
+            "dollar_volume_60d": "${:,.0f}",
+        }
+    ),
+    use_container_width=True,
+)
 
 st.subheader("Métricas por Ativo")
 
