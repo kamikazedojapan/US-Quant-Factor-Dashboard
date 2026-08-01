@@ -199,6 +199,68 @@ def calculate_equal_weight_portfolio(prices, tickers):
         "max_drawdown": max_drawdown,
     }
 
+def build_portifolio_diagnosis(portifolio, metrics, benchmark="SPY"):
+  """
+  Compara uma carteira com o benchmark e gera um diagnóstico simples.
+  """
+  if portifolio is None:
+    return None, "Não foi possível calcular o diagnóstico da carteira."
+  if metrics.empty or benchmark not in metrics["Ticker"].values:
+    return None, f"Benchmark {benchmark} não encontrado nas métricas."
+
+  benchmark_metrics = metrics[metrics["Ticker"] == benchmark].iloc[0]
+
+  diagnosis_data = [
+    {
+      "Métrica": "CAGR",
+      "Carteira": portifolio["cagr"],
+      "Benchmark": benchmark_metrics["CAGR"],
+      "Melhor Quando": "Maior",
+      "Resultado": "Melhor" if portifolio["cagr"] > benchmark_metrics["Sharpe"] else "Pior",
+    },
+    {
+      "Métrica": "Sharpe Ratio",
+      "Carteira": portifolio["sharpe"],
+      "Benchmark": benchmark_metrics["Sharpe"],
+      "Melhor quando": "Maior",
+      "Resultado": "Melhor" if portifolio["sharpe"] > benchmark_metrics["Sharpe"] else "Pior",
+    },
+    {
+      "Métrica": "Volatilidade",
+      "Carteira": portifolio["volatility"],
+      "Benchmark": benchmark_metrics["Volatilidade"],
+      "Melhor quando": "Menor",
+      "Resultado": "Melhor" if portifolio["volatility"] > benchmark_metrics["Volatilidade"] else "Pior",
+    },
+    {
+      "Métrica": "Max Drawdown",
+      "Carteira": portifolio["max_drawdown"],
+      "Benchmark": benchmark_metrics["Max Drawdown"],
+      "Melhor quando": "Menos negativo",
+      "Resultado": (
+        "Melhor"
+        if portifolio["max_drawdown"] > benchmark_metrics["Max Drawdown"]
+        else "Pior"
+      ),
+    },
+  ]
+
+  diagnosis_df = pd.DataFrame(diagnosis_data)
+
+  positive_results = (diagnosis_df["Resultado"] == "Melhor").sum()
+
+  if positive_results == 4:
+    summary = "A carteira superou o benchmark em todas as métricas principais."
+  elif positive_results == 3:
+    summary = "A carteira teve desempenho superior ao benchmark na maior parte das métricas."
+  elif positive_results == 2:
+    summary = "A carteira teve desempenho misto em relação ao benchmark."
+  elif positive_results == 1:
+    summary = "A carteira ficou abaixo do benchmark na maior parte das métricas."
+  else:
+    summary = "A carteira ficou pior que o benchmark em todas as métricas principais."
+
+  return diagnosis_df, summary
 
 def build_risk_return_chart(metrics):
     """
@@ -427,6 +489,43 @@ st.dataframe(
     use_container_width=True,
 )
 
+st.subheader("Diagnóstico da Carteira Quantitativa")
+
+diagnosis_df, diagnosis_summary = build_portifolio_diagnosis(
+  portifolio=quant_portfolio,
+  metrics=metrics,
+  benchmark="SPY",
+)
+
+if diagnosis_df is not None:
+  st.info(diagnosis_summary)
+
+  st.dataframe(
+    diagnosis_df.style.format(
+      {
+        "Carteira": "{:.2f}",
+        "Benchmark": "{:.2f}",
+      }
+    ),
+    use_container_width=True,
+  )
+
+  better_count = (diagnosis_df["Resultado"] == "Melhor").sum()
+
+  if better_count >= 3:
+    st.sucess(
+      "A carteira quantitativa apresentou um resultado forte em relação ao SPY."
+    )
+  elif better_count == 2:
+    st.warning(
+      "A carteira quantitativa teve resultado equilibrado. Vale analisar o risco antes de decidir."
+    )
+  else:
+    st.error(
+      "A carteira quantitativa ficou fraca em relação ao SPY neste periodo."
+    )
+else:
+  st.warning(diagnosis_summary)
 
 if quant_portfolio:
     col1, col2, col3, col4 = st.columns(4)
