@@ -333,6 +333,42 @@ with st.sidebar:
         value=min(10, max_top_n),
     )
 
+    st.markdown("---")
+    st.subheader("Pesos dos Fatores")
+
+    momentum_weight = st.slider(
+      "Peso Momentum",
+      min_value=0,
+      max_value=100,
+      value=40,
+    )
+
+    risk_weight = st.slider(
+      "Peso Baixo Risco",
+      min_value=0,
+      max_value=100,
+      value=35,
+    )
+
+    liquidity_weight = st.slider(
+      "Peso Liquidez",
+      min_value=0,
+      max_value=100,
+      value=25,
+    )
+
+    total_weight = momentum_weight + risk_weight + liquidity_weight
+
+    if total_weight == 0:
+      st.warning("Defina pelo menos um peso maior do que zero.")
+    else:
+      st.caption(
+        f"Distribuição atual: "
+        f"Momentum {momentum_weight / total_weight:.0%} | "
+        f"Risco {risk_weight / total_weight:.0%} | "
+        f"Liquidez {liquidity_weight / total_weight:.0%} | "
+      )
+
 
 if not selected_tickers:
     st.info("Selecione pelo menos uma ação na barra lateral.")
@@ -380,6 +416,9 @@ factor_scores = calculate_price_volume_factor_scores(
     prices=prices,
     volumes=volumes,
     benchmark="SPY",
+    momentum_weight=momentum_weight,
+    risk_weight=risk_weight,
+    liquidity_weight=liquidity_weight,
 )
 
 
@@ -493,7 +532,7 @@ st.dataframe(
 st.subheader("Diagnóstico da Carteira Quantitativa")
 
 diagnosis_df, diagnosis_summary = build_portfolio_diagnosis(
-  portifolio=quant_portfolio,
+  portfolio=quant_portfolio,
   metrics=metrics,
   benchmark="SPY",
 )
@@ -527,21 +566,6 @@ if diagnosis_df is not None:
     )
 else:
   st.warning(diagnosis_summary)
-
-if quant_portfolio:
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric("Retorno Total", f"{quant_portfolio['total_return']:.2%}")
-    col2.metric("CAGR", f"{quant_portfolio['cagr']:.2%}")
-    col3.metric("Volatilidade", f"{quant_portfolio['volatility']:.2%}")
-    col4.metric("Max Drawdown", f"{quant_portfolio['max_drawdown']:.2%}")
-
-    col5, col6 = st.columns(2)
-    col5.metric("Sharpe Ratio", f"{quant_portfolio['sharpe']:.2f}")
-    col6.metric("Ações no Top Ranking", len(top_quant_tickers))
-else:
-    st.warning("Não foi possível calcular a carteira quantitativa.")
-
 
 st.subheader("Desempenho Relativo")
 

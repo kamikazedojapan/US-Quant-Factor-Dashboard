@@ -6,7 +6,6 @@ O objetivo do projeto é construir uma ferramenta visual e analítica para ranqu
 
 > Este projeto tem finalidade educacional e não representa recomendação de investimento.
 
----
 
 ## Objetivo do Projeto
 
@@ -22,7 +21,6 @@ Em vez de escolher ações com base em opinião, notícias ou intuição, o proj
 6. Montar uma carteira teórica.
 7. Comparar o desempenho com um benchmark, como o S&P 500 ou o ETF SPY.
 
----
 
 ## Fundamentação Teórica
 
@@ -39,7 +37,6 @@ Este projeto se inspira em estudos clássicos de finanças, como:
 
 A proposta não é prever exatamente o preço futuro de uma ação, mas construir um ranking baseado em fatores historicamente relevantes.
 
----
 
 ## Fatores Utilizados
 
@@ -52,8 +49,6 @@ O modelo inicial utiliza cinco fatores principais:
 | Momentum    |  25% | Capturar ações com força recente de preço                             |
 | Baixo Risco |  15% | Priorizar ativos com menor volatilidade e menores quedas              |
 | Liquidez    |  10% | Evitar ações difíceis de negociar                                     |
-
----
 
 ## Fórmula do Score Final
 
@@ -71,8 +66,6 @@ Score Final =
 Cada fator será normalizado em uma escala de 0 a 100 usando ranking percentil.
 
 Quanto maior o score final, mais atrativa a ação será considerada pelo modelo.
-
----
 
 ## Indicadores por Fator
 
@@ -154,7 +147,6 @@ Indicadores sugeridos:
 
 Quanto maior a liquidez, melhor o score.
 
----
 
 ## Universo Inicial
 
@@ -172,7 +164,6 @@ SPY — SPDR S&P 500 ETF Trust
 
 Essa escolha foi feita porque o mercado americano possui melhor disponibilidade de dados, maior liquidez e maior proximidade com a literatura acadêmica usada como base teórica.
 
----
 
 ## Tecnologias Utilizadas
 
@@ -197,8 +188,6 @@ scikit-learn
 duckdb
 sqlalchemy
 ```
-
----
 
 ## Estrutura do Projeto
 
@@ -230,8 +219,6 @@ us_quant_factor_dashboard/
 │
 └── README.md
 ```
-
----
 
 ## Funcionalidades Planejadas
 
@@ -280,8 +267,6 @@ us_quant_factor_dashboard/
 * Exportação dos rankings em CSV ou Excel.
 * Dashboard mais completo com múltiplas páginas.
 
----
-
 ## Metodologia
 
 O projeto seguirá a seguinte metodologia:
@@ -299,8 +284,6 @@ O projeto seguirá a seguinte metodologia:
 11. Avaliar retorno, risco e drawdown.
 12. Documentar limitações e resultados.
 
----
-
 ## Métricas de Performance
 
 As principais métricas avaliadas serão:
@@ -316,8 +299,6 @@ As principais métricas avaliadas serão:
 | Alpha         | Retorno acima do benchmark ajustado ao risco |
 | Beta          | Sensibilidade da carteira ao benchmark       |
 | Turnover      | Frequência de troca dos ativos               |
-
----
 
 ## Como Rodar o Projeto
 
@@ -363,8 +344,6 @@ Execute o dashboard:
 streamlit run app.py
 ```
 
----
-
 ## Exemplo de Saída Esperada
 
 O dashboard deverá exibir:
@@ -378,8 +357,6 @@ O dashboard deverá exibir:
 * Métricas de risco e retorno.
 * Gráficos interativos.
 
----
-
 ## Limitações do Projeto
 
 Esta primeira versão possui algumas limitações importantes:
@@ -392,7 +369,22 @@ Esta primeira versão possui algumas limitações importantes:
 6. O modelo não considera eventos macroeconômicos, notícias ou mudanças regulatórias.
 7. O modelo não deve ser usado isoladamente para decisões reais de investimento.
 
----
+## Melhorias Futuras de Performance
+
+Como o dashboard pode apresentar lentidão ao analisar muitas ações ao mesmo tempo, principalmente ao expandir para o S&P 500 completo, algumas otimizações futuras serão necessárias.
+
+Melhorias planejadas:
+
+- Otimizar o dashboard para trabalhar com uma quantidade maior de ações.
+- Evitar renderizar todas as ações individuais no gráfico de desempenho.
+- Criar opção para mostrar apenas SPY, Carteira Manual e Carteira Quantitativa Top N.
+- Melhorar o uso de cache para dados baixados via yfinance.
+- Criar cache local em CSV para reduzir dependência de downloads repetidos.
+- Adicionar um modo rápido para análise com muitas ações.
+- Separar cálculos pesados da renderização visual.
+- Preparar o dashboard para analisar futuramente o S&P 500 completo.
+
+Essa etapa será importante para manter a aplicação responsiva quando o universo de análise deixar de ser uma amostra reduzida de ações e passar a utilizar centenas de ativos.
 
 ## Aviso Legal
 

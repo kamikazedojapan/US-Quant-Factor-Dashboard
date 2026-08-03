@@ -155,7 +155,14 @@ def calculate_liquidity_score(prices, volumes):
 
   return liquidity
 
-def calculate_price_volume_factor_scores(prices, volumes, benchmark="SPY"):
+def calculate_price_volume_factor_scores(
+  prices,
+  volumes,
+  benchmark="SPY",
+  momentum_weight=40,
+  risk_weight=35,
+  liquidity_weight=25,
+):
   """
   Junta os fatores calculados com preço e volume:
   - Momentum
@@ -179,10 +186,22 @@ def calculate_price_volume_factor_scores(prices, volumes, benchmark="SPY"):
       if column not in factors.columns:
           factors[column] = np.nan
 
+  total_weight = momentum_weight + risk_weight + liquidity_weight
+
+  if total_weight == 0:
+    momentum_weight = 40
+    risk_weight = 35
+    liquidity_weight = 25
+    total_weight = 100
+
+  momentum_weight = momentum_weight / total_weight
+  risk_weight = risk_weight / total_weight
+  liquidity_weight = liquidity_weight / total_weight
+
   factors["score_preliminar"] = (
-      0.40 * factors["score_momentum"]
-      + 0.35 * factors["score_risco"]
-      + 0.25 * factors["score_liquidez"]
+      momentum_weight * factors["score_momentum"]
+      + risk_weight * factors["score_risco"]
+      + liquidity_weight * factors["score_liquidez"]
   )
 
   factors = factors.sort_values("score_preliminar", ascending=False)
