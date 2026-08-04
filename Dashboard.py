@@ -296,15 +296,36 @@ st.caption(
 )
 
 sp500_df = get_sp500_tickers()
-tickers_list = sp500_df["ticker"].tolist()
+sector_options = ["Todos"] + sorted(sp500_df["sector"].dropna().unique().tolist())
 
 with st.sidebar:
     st.header("Configurações")
 
+    selected_sector = st.selectbox(
+        "Filtrar por setor",
+        options=sector_options,
+    )
+
+    if selected_sector == "Todos":
+        filtered_sp500_df = sp500_df.copy()
+    else:
+        filtered_sp500_df = sp500_df[sp500_df["sector"] == selected_sector].copy()
+
+    tickers_list = filtered_sp500_df["ticker"].tolist()
+
+    default_tickers = [
+        ticker
+        for ticker in ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL"]
+        if ticker in tickers_list
+    ]
+
+    if not default_tickers:
+        default_tickers = tickers_list[:5]
+
     selected_tickers = st.multiselect(
         "Selecione as ações",
-        options=tickers_list,
-        default=["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL"],
+        options=sector_options,
+        default=default_tickers,
     )
 
     start_date = st.date_input(
@@ -427,6 +448,16 @@ ranking_view = factor_scores.copy()
 if "SPY" in ranking_view.index:
     ranking_view = ranking_view.drop(index="SPY")
 
+ranking_display = ranking_view.copy()
+ranking_display.index.name = "ticker"
+ranking_display = ranking_display.reset_index()
+
+ranking_display = ranking_display.merge(
+    sp500_df,
+    on="ticker",
+    how="left"
+)
+
 top_n_quant = min(top_n_quant, len(ranking_view))
 
 top_quant_tickers = ranking_view.head(top_n_quant).index.tolist()
@@ -461,6 +492,10 @@ st.caption(
 )
 
 ranking_columns = [
+    "ticker",
+    "company",
+    "sector",
+    "industry",
     "score_momentum",
     "score_risco",
     "score_liquidez",
@@ -507,6 +542,9 @@ st.subheader(f"Carteira Quantitativa Top {top_n_quant}")
 st.write("Ações selecionadas automaticamente pelo ranking quantitativo preliminar:")
 
 portfolio_columns = [
+    "ticker",
+    "company",
+    "sector",
     "score_momentum",
     "score_risco",
     "score_liquidez",
