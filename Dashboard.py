@@ -563,7 +563,7 @@ ranking_columns = [
 ]
 
 available_ranking_columns = [
-    column for column in ranking_columns if column in ranking_view.columns
+    column for column in ranking_columns if column in ranking_display.columns
 ]
 
 st.dataframe(
@@ -603,7 +603,7 @@ portfolio_columns = [
 ]
 
 available_portfolio_columns = [
-    column for column in portfolio_columns if column in ranking_view.columns
+    column for column in portfolio_columns if column in ranking_display.columns
 ]
 
 st.dataframe(
@@ -694,7 +694,7 @@ if quant_portfolio:
   performance_df[f"Carteira Quant Top {top_n_quant}"] = quant_portfolio["curve"]
 
 if performance_df.empty:
-  st.waring("Nenhum dado disponível para exibir no gráfico.")
+  st.warning("Nenhum dado disponível para exibir no gráfico.")
 else:
   st.line_chart(performance_df)
 
