@@ -296,7 +296,12 @@ st.caption(
 )
 
 sp500_df = get_sp500_tickers()
-sector_options = ["Todos"] + sorted(sp500_df["sector"].dropna().unique().tolist())
+
+sp500_df["sector"] = sp500_df["sector"].fillna("Sem setor")
+
+sector_options = ["Todos"] + sorted(
+  sp500_df["sector"].dropna().unique().tolist()
+)
 
 with st.sidebar:
     st.header("Configurações")
@@ -304,6 +309,7 @@ with st.sidebar:
     selected_sector = st.selectbox(
         "Filtrar por setor",
         options=sector_options,
+        key="selected_sector"
     )
 
     if selected_sector == "Todos":
@@ -324,8 +330,9 @@ with st.sidebar:
 
     selected_tickers = st.multiselect(
         "Selecione as ações",
-        options=sector_options,
+        options=tickers_list,
         default=default_tickers,
+        key=f"selected_tickers_{selected_sector}",
     )
 
     start_date = st.date_input(
@@ -345,14 +352,22 @@ with st.sidebar:
 
     st.markdown("---")
 
-    max_top_n = max(1, len(selected_tickers))
+    selected_count = len(selected_tickers)
 
-    top_n_quant = st.slider(
+    if selected_count == 0:
+      top_n_quant = 1
+      st.info("Selecione pelo menos uma ação para calcular o Top Ranking.")
+    elif selected_count == 1:
+      top_n_quant = 1
+      st.info("Apenas uma ação disponível no setor. O top ranking será 1.")
+    else:
+      top_n_quant = st.slider(
         "Quantidade de ações no Top Ranking",
         min_value=1,
-        max_value=max_top_n,
-        value=min(10, max_top_n),
-    )
+        max_value=selected_count,
+        value=min(10, selected_count),
+        key=f"top_n_quant_{selected_sector}_{selected_count}",
+      )
 
     st.markdown("---")
     st.subheader("Pesos dos Fatores")
