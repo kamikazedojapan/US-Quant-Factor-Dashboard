@@ -150,7 +150,25 @@ def calculate_equal_weight_portfolio(prices, tickers):
     """
     Calcula uma carteira teórica com pesos iguais.
     """
-    valid_tickers = [ticker for ticker in tickers if ticker in prices.columns]
+    if tickers is None:
+      return None
+
+    clean_tickers = []
+
+    for item in tickers:
+      if isinstance(item, str):
+        clean_tickers.append(item)
+
+      elif isinstance(item, (list, tuple, set)):
+        for ticker in item:
+          if isinstance(ticker, str):
+            clean_tickers.append(ticker)
+
+    valid_tickers = [
+      ticker
+      for ticker in clean_tickers
+      if ticker in prices.columns
+    ]
 
     if not valid_tickers:
         return None
@@ -317,7 +335,7 @@ with st.sidebar:
     else:
         filtered_sp500_df = sp500_df[sp500_df["sector"] == selected_sector].copy()
 
-    tickers_list = filtered_sp500_df["ticker"].tolist()
+    tickers_list = filtered_sp500_df["ticker"].dropna().astype(str).tolist()
 
     default_tickers = [
         ticker
@@ -410,6 +428,18 @@ if not selected_tickers:
     st.info("Selecione pelo menos uma ação na barra lateral.")
     st.stop()
 
+st.markdown("---")
+st.subheader("Visualização")
+
+show_individual_assets = st.checkbox(
+  "Mostrar ações individuais no gráfico",
+  value=False,
+)
+
+show_top_assets = st.checkbox(
+  "Mostrar ações no Top Ranking no gráfico",
+  value=True,
+)
 
 download_tickers = selected_tickers.copy()
 
@@ -476,6 +506,12 @@ ranking_display = ranking_display.merge(
 top_n_quant = min(top_n_quant, len(ranking_view))
 
 top_quant_tickers = ranking_view.head(top_n_quant).index.tolist()
+
+top_quant_tickers = [
+  str(ticker)
+  for ticker in top_quant_tickers
+  if isinstance(ticker, str)
+]
 
 quant_portfolio = calculate_equal_weight_portfolio(
     prices=prices,
@@ -622,16 +658,45 @@ else:
 
 st.subheader("Desempenho Relativo")
 
-performance_df = normalized_prices.copy()
+performance_df = pd.DataFrame(index=normalized_prices.index)
+
+if show_spy and "SPY" in normalized_prices.columns:
+  performance_df["SPY"] = normalized_prices["SPY"]
+
+if show_individual_assets:
+  asset_columns = [
+    ticker
+    for ticker in available_selected_tickers
+    if isinstance(ticker, str) and ticker in normalized_prices.columns
+  ]
+
+  performance_df = performance_df.join(
+    normalized_prices[asset_columns],
+    how="left",
+  )
+
+elif show_top_assets:
+  top_assets_columns = [
+    ticker
+    for ticker in top_quant_tickers
+    if isinstance(ticker, str) and ticker in normalized_prices.columns
+  ]
+
+  performance_df = performance_df.join(
+    normalized_prices[top_assets_columns],
+    how="left",
+  )
 
 if manual_portfolio:
-    performance_df["Carteira Manual Equal Weight"] = manual_portfolio["curve"]
+  performance_df["Carteira Manual Equal Weight"] = manual_portfolio["curve"]
 
 if quant_portfolio:
-    performance_df[f"Carteira Quant Top {top_n_quant}"] = quant_portfolio["curve"]
+  performance_df[f"Carteira Quant Top {top_n_quant}"] = quant_portfolio["curve"]
 
-st.line_chart(performance_df)
-
+if performance_df.empty:
+  st.waring("Nenhum dado disponível para exibir no gráfico.")
+else:
+  st.line_chart(performance_df)
 
 st.subheader("Métricas por Ativo")
 
