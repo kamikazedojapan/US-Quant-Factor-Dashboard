@@ -1,312 +1,25 @@
 from datetime import datetime
 
-import numpy as np
 import pandas as pd
-import plotly.express as px
 import streamlit as st
-import yfinance as yf
 
+from src.data_loader import download_market_data, get_sp500_tickers
 from src.factors import calculate_price_volume_factor_scores
-
+from src.metrics import (
+  build_risk_return_chart,
+  calculate_asset_metrics,
+  normalize_prices,
+)
+from src.portfolio import (
+  build_portfolio_diagnosis,
+  calculate_equal_weight_portfolio,
+)
 
 st.set_page_config(
     page_title="US Quant Factor Dashboard",
     page_icon="📊",
     layout="wide",
 )
-
-
-@st.cache_data(show_spinner=False)
-def get_sp500_tickers():
-    """
-    Carrega uma lista local de ações americanas.
-
-    O arquivo deve estar em:
-    data/tickers_sp500.csv
-    """
-    try:
-        tickers_df = pd.read_csv("data/tickers_sp500.csv")
-        return tickers_df
-
-    except FileNotFoundError:
-        st.error(
-            "Arquivo data/tickers_sp500.csv não encontrado. "
-            "Crie o arquivo antes de executar o dashboard."
-        )
-        st.stop()
-
-
-@st.cache_data(show_spinner=True)
-def download_market_data(tickers, start_date, end_date):
-    """
-    Baixa preços ajustados e volume dos tickers selecionados usando yfinance.
-    """
-    if not tickers:
-        return pd.DataFrame(), pd.DataFrame()
-
-    data = yf.download(
-        tickers,
-        start=start_date,
-        end=end_date,
-        auto_adjust=True,
-        progress=False,
-        group_by="column",
-    )
-
-    if data.empty:
-        return pd.DataFrame(), pd.DataFrame()
-
-    if isinstance(data.columns, pd.MultiIndex):
-        prices = data["Close"].copy()
-        volumes = data["Volume"].copy()
-    else:
-        ticker = tickers[0]
-
-        prices = data[["Close"]].copy()
-        prices.columns = [ticker]
-
-        volumes = data[["Volume"]].copy()
-        volumes.columns = [ticker]
-
-    prices = prices.sort_index().dropna(how="all")
-    volumes = volumes.sort_index().dropna(how="all")
-
-    return prices, volumes
-
-
-def calculate_asset_metrics(prices):
-    """
-    Calcula métricas individuais para cada ativo.
-    """
-    metrics = []
-
-    for ticker in prices.columns:
-        series = prices[ticker].dropna()
-
-        if len(series) < 2:
-            continue
-
-        returns = series.pct_change().dropna()
-
-        if returns.empty:
-            continue
-
-        first_price = series.iloc[0]
-        last_price = series.iloc[-1]
-
-        total_return = (last_price / first_price) - 1
-
-        days = (series.index[-1] - series.index[0]).days
-        years = days / 365 if days > 0 else np.nan
-
-        if years and years > 0:
-            cagr = (last_price / first_price) ** (1 / years) - 1
-        else:
-            cagr = np.nan
-
-        volatility = returns.std() * np.sqrt(252)
-
-        if returns.std() != 0:
-            sharpe = (returns.mean() / returns.std()) * np.sqrt(252)
-        else:
-            sharpe = np.nan
-
-        normalized = series / first_price
-        drawdown = normalized / normalized.cummax() - 1
-        max_drawdown = drawdown.min()
-
-        metrics.append(
-            {
-                "Ticker": ticker,
-                "Retorno Total": total_return,
-                "CAGR": cagr,
-                "Volatilidade": volatility,
-                "Sharpe": sharpe,
-                "Max Drawdown": max_drawdown,
-            }
-        )
-
-    return pd.DataFrame(metrics)
-
-
-def normalize_prices(prices):
-    """
-    Normaliza os preços para base 100.
-    """
-    normalized = pd.DataFrame(index=prices.index)
-
-    for ticker in prices.columns:
-        series = prices[ticker].dropna()
-
-        if series.empty:
-            continue
-
-        normalized[ticker] = 100 * prices[ticker] / series.iloc[0]
-
-    return normalized
-
-
-def calculate_equal_weight_portfolio(prices, tickers):
-    """
-    Calcula uma carteira teórica com pesos iguais.
-    """
-    if tickers is None:
-      return None
-
-    clean_tickers = []
-
-    for item in tickers:
-      if isinstance(item, str):
-        clean_tickers.append(item)
-
-      elif isinstance(item, (list, tuple, set)):
-        for ticker in item:
-          if isinstance(ticker, str):
-            clean_tickers.append(ticker)
-
-    valid_tickers = [
-      ticker
-      for ticker in clean_tickers
-      if ticker in prices.columns
-    ]
-
-    if not valid_tickers:
-        return None
-
-    selected_prices = prices[valid_tickers].dropna(how="all")
-
-    if selected_prices.empty:
-        return None
-
-    returns = selected_prices.pct_change().dropna(how="all")
-    portfolio_returns = returns.mean(axis=1)
-
-    if portfolio_returns.empty:
-        return None
-
-    portfolio_curve = (1 + portfolio_returns).cumprod()
-    portfolio_curve = 100 * portfolio_curve / portfolio_curve.iloc[0]
-
-    total_return = portfolio_curve.iloc[-1] / portfolio_curve.iloc[0] - 1
-
-    days = (portfolio_curve.index[-1] - portfolio_curve.index[0]).days
-    years = days / 365 if days > 0 else np.nan
-
-    if years and years > 0:
-        cagr = (portfolio_curve.iloc[-1] / portfolio_curve.iloc[0]) ** (1 / years) - 1
-    else:
-        cagr = np.nan
-
-    volatility = portfolio_returns.std() * np.sqrt(252)
-
-    if portfolio_returns.std() != 0:
-        sharpe = portfolio_returns.mean() / portfolio_returns.std() * np.sqrt(252)
-    else:
-        sharpe = np.nan
-
-    drawdown = portfolio_curve / portfolio_curve.cummax() - 1
-    max_drawdown = drawdown.min()
-
-    return {
-        "curve": portfolio_curve,
-        "returns": portfolio_returns,
-        "total_return": total_return,
-        "cagr": cagr,
-        "volatility": volatility,
-        "sharpe": sharpe,
-        "max_drawdown": max_drawdown,
-    }
-
-def build_portfolio_diagnosis(portfolio, metrics, benchmark="SPY"):
-    """
-    Compara uma carteira com o benchmark e gera um diagnóstico simples.
-    """
-    if portfolio is None:
-        return None, "Não foi possível calcular o diagnóstico da carteira."
-
-    if metrics.empty or benchmark not in metrics["Ticker"].values:
-        return None, f"Benchmark {benchmark} não encontrado nas métricas."
-
-    benchmark_metrics = metrics[metrics["Ticker"] == benchmark].iloc[0]
-
-    diagnosis_data = [
-        {
-            "Métrica": "CAGR",
-            "Carteira": portfolio["cagr"],
-            "Benchmark": benchmark_metrics["CAGR"],
-            "Melhor quando": "Maior",
-            "Resultado": "Melhor" if portfolio["cagr"] > benchmark_metrics["CAGR"] else "Pior",
-        },
-        {
-            "Métrica": "Sharpe Ratio",
-            "Carteira": portfolio["sharpe"],
-            "Benchmark": benchmark_metrics["Sharpe"],
-            "Melhor quando": "Maior",
-            "Resultado": "Melhor" if portfolio["sharpe"] > benchmark_metrics["Sharpe"] else "Pior",
-        },
-        {
-            "Métrica": "Volatilidade",
-            "Carteira": portfolio["volatility"],
-            "Benchmark": benchmark_metrics["Volatilidade"],
-            "Melhor quando": "Menor",
-            "Resultado": "Melhor" if portfolio["volatility"] < benchmark_metrics["Volatilidade"] else "Pior",
-        },
-        {
-            "Métrica": "Max Drawdown",
-            "Carteira": portfolio["max_drawdown"],
-            "Benchmark": benchmark_metrics["Max Drawdown"],
-            "Melhor quando": "Menos negativo",
-            "Resultado": (
-                "Melhor"
-                if portfolio["max_drawdown"] > benchmark_metrics["Max Drawdown"]
-                else "Pior"
-            ),
-        },
-    ]
-
-    diagnosis_df = pd.DataFrame(diagnosis_data)
-
-    positive_results = (diagnosis_df["Resultado"] == "Melhor").sum()
-
-    if positive_results == 4:
-        summary = "A carteira superou o benchmark em todas as métricas principais."
-    elif positive_results == 3:
-        summary = "A carteira teve desempenho superior ao benchmark na maior parte das métricas."
-    elif positive_results == 2:
-        summary = "A carteira teve desempenho misto em relação ao benchmark."
-    elif positive_results == 1:
-        summary = "A carteira ficou abaixo do benchmark na maior parte das métricas."
-    else:
-        summary = "A carteira ficou pior que o benchmark em todas as métricas principais."
-
-    return diagnosis_df, summary
-
-def build_risk_return_chart(metrics):
-    """
-    Cria gráfico de risco x retorno.
-    """
-    fig = px.scatter(
-        metrics,
-        x="Volatilidade",
-        y="CAGR",
-        text="Ticker",
-        color="Sharpe",
-        title="Risco x Retorno",
-    )
-
-    fig.update_traces(
-        marker=dict(size=24),
-        textposition="top center",
-    )
-
-    fig.update_layout(
-        xaxis_tickformat=".0%",
-        yaxis_tickformat=".0%",
-        height=600,
-    )
-
-    return fig
-
 
 st.title("US Quant Factor Dashboard")
 st.caption(
@@ -423,23 +136,23 @@ with st.sidebar:
         f"Liquidez {liquidity_weight / total_weight:.0%} | "
       )
 
+      st.markdown("---")
+      st.subheader("Visualização")
+
+      show_individual_assets = st.checkbox(
+        "Mostrar ações individuais no gráfico",
+        value=False,
+      )
+
+      show_top_assets = st.checkbox(
+        "Mostrar ações no Top Ranking no gráfico",
+        value=True,
+      )
+
 
 if not selected_tickers:
     st.info("Selecione pelo menos uma ação na barra lateral.")
     st.stop()
-
-st.markdown("---")
-st.subheader("Visualização")
-
-show_individual_assets = st.checkbox(
-  "Mostrar ações individuais no gráfico",
-  value=False,
-)
-
-show_top_assets = st.checkbox(
-  "Mostrar ações no Top Ranking no gráfico",
-  value=True,
-)
 
 download_tickers = selected_tickers.copy()
 
@@ -567,7 +280,7 @@ available_ranking_columns = [
 ]
 
 st.dataframe(
-    ranking_view[available_ranking_columns].style.format(
+    ranking_display[available_ranking_columns].style.format(
         {
             "score_momentum": "{:.2f}",
             "score_risco": "{:.2f}",
@@ -607,7 +320,7 @@ available_portfolio_columns = [
 ]
 
 st.dataframe(
-    ranking_view.head(top_n_quant)[available_portfolio_columns].style.format(
+    ranking_display.head(top_n_quant)[available_portfolio_columns].style.format(
         {
             "score_momentum": "{:.2f}",
             "score_risco": "{:.2f}",
