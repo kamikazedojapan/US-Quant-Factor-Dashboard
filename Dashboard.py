@@ -139,14 +139,13 @@ with st.sidebar:
       st.markdown("---")
       st.subheader("Visualização")
 
-      show_individual_assets = st.checkbox(
-        "Mostrar ações individuais no gráfico",
-        value=False,
-      )
-
-      show_top_assets = st.checkbox(
-        "Mostrar ações no Top Ranking no gráfico",
-        value=True,
+      chart_mode = st.selectbox(
+        "Modo gráfico",
+        options=[
+          "Apenas carteiras e SPY",
+          "Carteiras + ações do Top Ranking",
+          "Carteiras + todas as ações selecionadas",
+        ],
       )
 
 
@@ -376,29 +375,31 @@ performance_df = pd.DataFrame(index=normalized_prices.index)
 if show_spy and "SPY" in normalized_prices.columns:
   performance_df["SPY"] = normalized_prices["SPY"]
 
-if show_individual_assets:
-  asset_columns = [
+if chart_mode == "Carteiras + todas as ações selecionadas":
+  assets_columns = [
     ticker
     for ticker in available_selected_tickers
     if isinstance(ticker, str) and ticker in normalized_prices.columns
   ]
 
-  performance_df = performance_df.join(
-    normalized_prices[asset_columns],
-    how="left",
-  )
+  if assets_columns:
+    performance_df = performance_df.join(
+      normalized_prices[assets_columns],
+      how="left",
+    )
 
-elif show_top_assets:
+elif chart_mode == "Carteiras + ações do Top Ranking":
   top_assets_columns = [
     ticker
     for ticker in top_quant_tickers
     if isinstance(ticker, str) and ticker in normalized_prices.columns
   ]
 
-  performance_df = performance_df.join(
-    normalized_prices[top_assets_columns],
-    how="left",
-  )
+  if top_assets_columns:
+    performance_df = performance_df.join(
+      normalized_prices[top_assets_columns],
+      how="left",
+    )
 
 if manual_portfolio:
   performance_df["Carteira Manual Equal Weight"] = manual_portfolio["curve"]
