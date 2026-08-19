@@ -238,29 +238,6 @@ if manual_portfolio:
 else:
     st.warning("Não foi possível calcular a carteira manual com os dados disponíveis.")
 
-st.subheader(f"Resumo da Carteira Quantitativa Top {top_n_quant}")
-
-st.caption(
-  "A carteira quantitativa é formada automaticamente pelas ações com melhor "
-  "score no ranking preliminar. Para ver o ranking completo, acesse a página "
-  "Ranking Multifatorial na barra lateral."
-)
-
-if quant_portfolio:
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric("Retorno Total", f"{quant_portfolio['total_return']:.2%}")
-    col2.metric("CAGR", f"{quant_portfolio['cagr']:.2%}")
-    col3.metric("Volatilidade", f"{quant_portfolio['volatility']:.2%}")
-    col4.metric("Max Drawdown", f"{quant_portfolio['max_drawdown']:.2%}")
-
-    col5, col6 = st.columns(2)
-
-    col5.metric("Sharpe Ratio", f"{quant_portfolio['sharpe']:.2f}")
-    col6.metric("Ações no Top Ranking", len(top_quant_tickers))
-else:
-    st.warning("Não foi possível calcular a carteira quantitativa.")
-
 st.subheader("Diagnóstico da Carteira Quantitativa")
 
 diagnosis_df, diagnosis_summary = build_portfolio_diagnosis(
