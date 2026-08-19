@@ -128,25 +128,26 @@ with st.sidebar:
 
     if total_weight == 0:
       st.warning("Defina pelo menos um peso maior do que zero.")
-    else:
-      st.caption(
+      st.stop()
+
+    st.caption(
         f"Distribuição atual: "
         f"Momentum {momentum_weight / total_weight:.0%} | "
         f"Risco {risk_weight / total_weight:.0%} | "
-        f"Liquidez {liquidity_weight / total_weight:.0%} | "
-      )
+        f"Liquidez {liquidity_weight / total_weight:.0%}"
+    )
 
-      st.markdown("---")
-      st.subheader("Visualização")
+    st.markdown("---")
+    st.subheader("Visualização")
 
-      chart_mode = st.selectbox(
+    chart_mode = st.selectbox(
         "Modo gráfico",
         options=[
-          "Apenas carteiras e SPY",
-          "Carteiras + ações do Top Ranking",
-          "Carteiras + todas as ações selecionadas",
+            "Apenas carteiras e SPY",
+            "Carteiras + ações do Top Ranking",
+            "Carteiras + todas as ações selecionadas",
         ],
-      )
+    )
 
 
 if not selected_tickers:
@@ -205,16 +206,6 @@ ranking_view = factor_scores.copy()
 if "SPY" in ranking_view.index:
     ranking_view = ranking_view.drop(index="SPY")
 
-ranking_display = ranking_view.copy()
-ranking_display.index.name = "ticker"
-ranking_display = ranking_display.reset_index()
-
-ranking_display = ranking_display.merge(
-    sp500_df,
-    on="ticker",
-    how="left"
-)
-
 top_n_quant = min(top_n_quant, len(ranking_view))
 
 top_quant_tickers = ranking_view.head(top_n_quant).index.tolist()
@@ -247,88 +238,28 @@ if manual_portfolio:
 else:
     st.warning("Não foi possível calcular a carteira manual com os dados disponíveis.")
 
-
-st.subheader("Ranking Quantitativo Preliminar")
+st.subheader(f"Resumo da Carteira Quantitativa Top {top_n_quant}")
 
 st.caption(
-    "Este ranking usa apenas fatores calculados com preço e volume: momentum, baixo risco e liquidez."
+  "A carteira quantitativa é formada automaticamente pelas ações com melhor "
+  "score no ranking preliminar. Para ver o ranking completo, acesse a página "
+  "Ranking Multifatorial na barra lateral."
 )
 
-ranking_columns = [
-    "ticker",
-    "company",
-    "sector",
-    "industry",
-    "score_momentum",
-    "score_risco",
-    "score_liquidez",
-    "score_preliminar",
-    "retorno_3m",
-    "retorno_6m",
-    "retorno_12m",
-    "retorno_12_1m",
-    "volatilidade_252d",
-    "beta",
-    "max_drawdown_252d",
-    "volume_medio_60d",
-    "dollar_volume_60d",
-]
+if quant_portfolio:
+    col1, col2, col3, col4 = st.columns(4)
 
-available_ranking_columns = [
-    column for column in ranking_columns if column in ranking_display.columns
-]
+    col1.metric("Retorno Total", f"{quant_portfolio['total_return']:.2%}")
+    col2.metric("CAGR", f"{quant_portfolio['cagr']:.2%}")
+    col3.metric("Volatilidade", f"{quant_portfolio['volatility']:.2%}")
+    col4.metric("Max Drawdown", f"{quant_portfolio['max_drawdown']:.2%}")
 
-st.dataframe(
-    ranking_display[available_ranking_columns].style.format(
-        {
-            "score_momentum": "{:.2f}",
-            "score_risco": "{:.2f}",
-            "score_liquidez": "{:.2f}",
-            "score_preliminar": "{:.2f}",
-            "retorno_3m": "{:.2%}",
-            "retorno_6m": "{:.2%}",
-            "retorno_12m": "{:.2%}",
-            "retorno_12_1m": "{:.2%}",
-            "volatilidade_252d": "{:.2%}",
-            "beta": "{:.2f}",
-            "max_drawdown_252d": "{:.2%}",
-            "volume_medio_60d": "{:,.0f}",
-            "dollar_volume_60d": "${:,.0f}",
-        }
-    ),
-    use_container_width=True,
-)
+    col5, col6 = st.columns(2)
 
-
-st.subheader(f"Carteira Quantitativa Top {top_n_quant}")
-
-st.write("Ações selecionadas automaticamente pelo ranking quantitativo preliminar:")
-
-portfolio_columns = [
-    "ticker",
-    "company",
-    "sector",
-    "score_momentum",
-    "score_risco",
-    "score_liquidez",
-    "score_preliminar",
-]
-
-available_portfolio_columns = [
-    column for column in portfolio_columns if column in ranking_display.columns
-]
-
-st.dataframe(
-    ranking_display.head(top_n_quant)[available_portfolio_columns].style.format(
-        {
-            "score_momentum": "{:.2f}",
-            "score_risco": "{:.2f}",
-            "score_liquidez": "{:.2f}",
-            "score_preliminar": "{:.2f}",
-        }
-    ),
-    use_container_width=True,
-)
+    col5.metric("Sharpe Ratio", f"{quant_portfolio['sharpe']:.2f}")
+    col6.metric("Ações no Top Ranking", len(top_quant_tickers))
+else:
+    st.warning("Não foi possível calcular a carteira quantitativa.")
 
 st.subheader("Diagnóstico da Carteira Quantitativa")
 
