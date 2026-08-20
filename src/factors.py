@@ -225,19 +225,47 @@ def calculate_price_volume_factor_scores(
   - Baixo Risco
   - Liquidez
   """
+  if benchmark not in prices.columns:
+    raise ValueError(
+      f"Benchmark {benchmark} não encontrado "
+      "nos dados de preços."
+    )
+    
   ranking_prices = prices.drop(
     columns=[benchmark],
     errors="ignore",
   )
 
+  minimum_history = 253
+
+  eligible_tickers = [
+    ticker
+    for ticker in ranking_prices.columns
+    if ranking_prices[ticker].dropna().shape[0]
+    >= minimum_history
+  ]
+
+  ranking_prices = ranking_prices[
+    eligible_tickers
+  ]
+
   ranking_volumes = volumes.reindex(
-    columns=ranking_prices.columns,
+    columns=eligible_tickers,
   )
+
+  risk_columns = eligible_tickers.copy()
+
+  if benchmark in prices.columns:
+    risk_columns.append(benchmark)
+
+  risk_prices = prices[
+    risk_columns
+  ]
 
   momentum = calculate_momentum_score(ranking_prices)
 
   risk = calculate_risk_score(
-    prices,
+    risk_prices,
     benchmark=benchmark
   )
 

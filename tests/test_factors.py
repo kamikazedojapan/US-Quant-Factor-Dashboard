@@ -157,5 +157,101 @@ class TestFactorRanking(unittest.TestCase):
       places=10,
     )
 
+  def test_ranking_excludes_asset_without_twelve_month_history(self):
+    dates = pd.bdate_range(
+      start="2023-01-02",
+      periods=300
+    )
+
+    full_prices = [
+      100 + (day * 0.20)
+      for day in range(300)
+    ]
+
+    short_prices = (
+      [None] * 100
+      + [
+        50 + (day * 0.15)
+        for day in range(200)
+      ]
+    )
+
+    spy_prices = [
+      100 + (day * 100)
+      for day in range(300)
+    ]
+
+    prices = pd.DataFrame(
+      {
+        "FULL": full_prices,
+        "SHORT": short_prices,
+        "SPY": spy_prices,
+      },
+      index=dates
+    )
+
+    volumes = pd.DataFrame(
+      {
+        "FULL": [8_000_000] * 300,
+        "SHORT": [5_000_000] * 300,
+        "SPY": [15_000_000] * 300,
+      },
+      index=dates,
+    )
+
+    ranking = calculate_price_volume_factor_scores(
+      prices=prices,
+      volumes=volumes,
+      benchmark="SPY",
+    )
+
+    self.assertIn(
+      "FULL",
+      ranking.index,
+    )
+
+    self.assertNotIn(
+      "SHORT",
+      ranking.index,
+    )
+
+  def test_ranking_requires_benchmark_data(self):
+    dates = pd.bdate_range(
+      start="2023-01-02",
+      periods=300,
+    )
+
+    prices = pd.DataFrame(
+      {
+        "AAA": [
+          100 + (day * 0.20)
+          for day in range(300)
+        ],
+        "BBB": [
+          100 + (day * 0.10)
+          for day in range(300)
+        ],
+      },
+      index=dates
+    )
+
+    volumes = pd.DataFrame(
+      {
+        "AAA": [8_000_000] * 300,
+        "BBB": [5_000_000] * 300,
+      },
+      index=dates,
+    )
+
+    with self.assertRaisesRegex(
+      ValueError,
+      "Benchmark SPY"
+    ):
+      calculate_price_volume_factor_scores(
+        prices=prices,
+        volumes=volumes,
+        benchmark="SPY",
+      )
+
 if __name__ == "__main__":
   unittest.main()
