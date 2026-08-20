@@ -3,22 +3,49 @@ import pandas as pd
 
 def percentile_score(series, higher_is_better=True):
   """
-  Converte uma série númerica em score percentil de 0 a 100.
-  higher_is_better=True:
-    valores maiores recebem score maior.
+  Converte uma série numérica em score de 0 a 100.
 
-  higher_is_better=False:
-    valores menores recebem score maior.
+  O pior valor recebe 0.
+  O melhor valor recebe 100.
   """
-  clean_series = series.replace([np.inf, -np.inf], np.nan)
+  clean_series = series.replace(
+      [np.inf, -np.inf],
+      np.nan,
+  )
 
-  if clean_series.dropna().empty:
-    return pd.Series(np.nan, index=series.index)
+  valid_count = clean_series.notna().sum()
 
-  score = clean_series.rank(pct=True) * 100
+  if valid_count == 0:
+      return pd.Series(
+          np.nan,
+          index=series.index,
+          dtype=float,
+      )
+
+  if valid_count == 1:
+      score = pd.Series(
+          np.nan,
+          index=series.index,
+          dtype=float,
+      )
+
+      score.loc[clean_series.notna()] = 50.0
+
+      return score
+
+  ranks = clean_series.rank(
+      method="average",
+      ascending=True,
+  )
+
+  score = (
+      (ranks - 1)
+      / (valid_count - 1)
+      * 100
+  )
 
   if not higher_is_better:
-    score = 100 - score
+      score = 100 - score
 
   return score
 
@@ -68,39 +95,68 @@ def calculate_risk_score(prices, benchmark="SPY"):
   """
   returns = prices.pct_change().dropna(how="all")
 
-  risk = pd.DataFrame(index=prices.columns)
+  asset_columns = [
+    ticker
+    for ticker in prices.columns
+    if ticker != benchmark
+  ]
 
-  risk["volatilidade_252d"] = returns.tail(252).std() * np.sqrt(252)
+  risk = pd.DataFrame(index=asset_columns)
+
+  risk["volatilidade_252d"] = (
+    returns[asset_columns].tail(252).std() * np.sqrt(252)
+  )
 
   if benchmark in returns.columns:
     benchmark_returns = returns[benchmark].dropna()
-    benchmark_variance = benchmark_returns.var()
 
     betas = {}
 
-    for ticker in returns.columns:
+    for ticker in asset_columns:
       ticker_returns = returns[ticker].dropna()
 
       aligned_returns = pd.concat(
-        [ticker_returns, benchmark_returns],
+        [
+          ticker_returns,
+          benchmark_returns,
+        ],
         axis=1,
         join="inner",
       ).dropna()
 
-      if aligned_returns.empty or benchmark_variance == 0:
+      if len(aligned_returns) < 2:
         betas[ticker] = np.nan
-      else:
-        covariance = aligned_returns.iloc[:, 0].cov(aligned_returns.iloc[:, 1])
-        beta = covariance / benchmark_variance
-        betas[ticker] = beta
+        continue
 
-    risk["beta"] = pd.Series(betas)
+      aligned_benchmark_variance = (
+        aligned_returns.iloc[:, 1].var()
+      )
+
+      if (
+        pd.isna(aligned_benchmark_variance)
+        or aligned_benchmark_variance == 0
+      ):
+        betas[ticker] = np.nan
+        continue
+
+      covariance = aligned_returns.iloc[:, 0].cov(
+        aligned_returns.iloc[:, 1]
+      )
+
+      beta = covariance / aligned_benchmark_variance
+
+      betas[ticker] = beta
+
+    risk["beta"] = pd.Series(
+      betas,
+      dtype=float
+    )
   else:
     risk["beta"] = np.nan
 
   drawdowns = {}
 
-  for ticker in prices.columns:
+  for ticker in asset_columns:
     series = prices[ticker].dropna().tail(252)
 
     if series.empty:
@@ -169,9 +225,26 @@ def calculate_price_volume_factor_scores(
   - Baixo Risco
   - Liquidez
   """
-  momentum = calculate_momentum_score(prices)
-  risk = calculate_risk_score(prices, benchmark=benchmark)
-  liquidity = calculate_liquidity_score(prices, volumes)
+  ranking_prices = prices.drop(
+    columns=[benchmark],
+    errors="ignore",
+  )
+
+  ranking_volumes = volumes.reindex(
+    columns=ranking_prices.columns,
+  )
+
+  momentum = calculate_momentum_score(ranking_prices)
+
+  risk = calculate_risk_score(
+    prices,
+    benchmark=benchmark
+  )
+
+  liquidity = calculate_liquidity_score(
+    ranking_prices,
+    ranking_volumes,
+  )
 
   factors = momentum.join(risk, how="outer")
   factors = factors.join(liquidity, how="outer")

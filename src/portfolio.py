@@ -59,8 +59,19 @@ def calculate_equal_weight_portfolio(prices, tickers):
     if portfolio_returns.empty:
         return None
 
-    portfolio_curve = (1 + portfolio_returns).cumprod()
-    portfolio_curve = 100 * portfolio_curve / portfolio_curve.iloc[0]
+    accumulated_returns = (1 + portfolio_returns).cumprod()
+
+    initial_curve = pd.Series(
+      [100.0],
+      index=[selected_prices.index[0]],
+    )
+
+    portfolio_curve = pd.concat(
+      [
+        initial_curve,
+        100 * accumulated_returns,
+      ]
+    )
 
     total_return = portfolio_curve.iloc[-1] / portfolio_curve.iloc[0] - 1
 
