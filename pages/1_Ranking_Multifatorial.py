@@ -82,12 +82,6 @@ with st.sidebar:
         key="ranking_end_date",
     )
 
-    show_spy = st.checkbox(
-        "Adicionar SPY como benchmark",
-        value=True,
-        key="ranking_show_spy",
-    )
-
     st.markdown("---")
 
     selected_count = len(selected_tickers)
@@ -157,7 +151,7 @@ if not selected_tickers:
 
 download_tickers = selected_tickers.copy()
 
-if show_spy and "SPY" not in download_tickers:
+if "SPY" not in download_tickers:
     download_tickers.append("SPY")
 
 
@@ -169,8 +163,13 @@ prices, volumes = download_market_data(
 
 
 if prices.empty:
-    st.error("Não foi possível baixar os dados. Verifique os tickers ou o período escolhido.")
-    st.stop()
+    if "SPY" not in prices.columns:
+      st.error(
+        "Não foi possível obter os dados do SPY. "
+        "O benchmark é necessário para calcular "
+        "o fator de baixo risco."
+      )
+      st.stop()
 
 
 available_selected_tickers = [
@@ -252,7 +251,7 @@ col1, col2, col3, col4 = st.columns(4)
 col1.metric("Ações analisadas", len(available_selected_tickers))
 col2.metric("Top Ranking", top_n_quant)
 col3.metric("Setor", selected_sector)
-col4.metric("Benchmark", "SPY" if show_spy else "Não utilizado")
+col4.metric("Benchmark", "SPY")
 
 
 st.markdown("---")

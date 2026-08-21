@@ -77,7 +77,7 @@ with st.sidebar:
     )
 
     show_spy = st.checkbox(
-        "Adicionar SPY como benchmark",
+        "Exibir SPY no gráfico",
         value=True,
     )
 
@@ -156,7 +156,7 @@ if not selected_tickers:
 
 download_tickers = selected_tickers.copy()
 
-if show_spy and "SPY" not in download_tickers:
+if "SPY" not in download_tickers:
     download_tickers.append("SPY")
 
 
@@ -167,9 +167,13 @@ prices, volumes = download_market_data(
 )
 
 
-if prices.empty:
-    st.error("Não foi possível baixar os dados. Verifique os tickers ou o período escolhido.")
-    st.stop()
+if "SPY" not in prices.columns:
+  st.error(
+    "Não foi possível obter os dados do SPY. "
+    "O benchmark é necessário para calcular "
+    "o fator de baixo risco."
+  )
+  st.stop()
 
 
 available_selected_tickers = [
