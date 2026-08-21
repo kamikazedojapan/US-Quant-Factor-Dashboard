@@ -1,11 +1,14 @@
 import unittest
 import pandas as pd
+import numpy as np
 
 from src.factors import (
   calculate_price_volume_factor_scores,
   calculate_risk_score,
   percentile_score,
+  calculate_out_of_sample_factor_scores,
 )
+
 
 class TestFactorRanking(unittest.TestCase):
   def test_benchmark_is_not_included_in_ranking(self):
@@ -252,6 +255,90 @@ class TestFactorRanking(unittest.TestCase):
         volumes=volumes,
         benchmark="SPY",
       )
+  def test_out_sample_ranking_ignores_evaluation_period_data(self):
+    formation_dates = pd.bdate_range(
+      end="2024-12-31",
+      periods=253,
+    )
+
+    evaluation_dates = pd.bdate_range(
+      start="2025-01-02",
+      periods=20,
+    )
+
+    dates = formation_dates.append(evaluation_dates)
+
+    prices = pd.DataFrame(
+      {
+        "AAA": np.concatenate(
+          [
+            np.linspace(100, 160, len(formation_dates)),
+            np.linspace(161, 180, len(evaluation_dates)),
+          ]
+        ),
+        "BBB": np.concatenate(
+          [
+            np.linspace(100, 120, len(formation_dates)),
+            np.linspace(121, 130, len(evaluation_dates)),
+          ]
+        ),
+        "SPY": np.concatenate(
+          [
+            np.linspace(100, 130, len(formation_dates)),
+            np.linspace(131, 140, len(evaluation_dates)),
+          ]
+        ),
+      },
+      index=dates,
+    )
+
+    volumes = pd.DataFrame(
+      {
+        "AAA": 2_000_000,
+        "BBB": 1_000_000,
+        "SPY": 3_000_000,
+      },
+      index=dates
+    )
+
+    evaluation_start = pd.Timestamp("2025-01-01")
+
+    original_ranking = calculate_out_of_sample_factor_scores(
+      prices=prices,
+      volumes=volumes,
+      evaluation_start=evaluation_start,
+      benchmark="SPY",
+    )
+
+    changed_prices = prices.copy()
+    changed_volumes = volumes.copy()
+
+    changed_prices.loc[evaluation_dates, "AAA"] = np.linspace(
+      1_000,
+      100,
+      len(evaluation_dates)
+    )
+
+    changed_prices.loc[evaluation_dates, "BBB"] = np.linspace(
+      1_000,
+      100,
+      len(evaluation_dates),
+    )
+
+    changed_volumes.loc[evaluation_dates, "AAA"] = 1
+    changed_volumes.loc[evaluation_dates, "BBB"] = 1_000_000_000
+
+    changed_ranking = calculate_out_of_sample_factor_scores(
+      prices=changed_prices,
+      volumes=changed_volumes,
+      evaluation_start=evaluation_start,
+      benchmark="SPY",
+    )
+
+    pd.testing.assert_frame_equal(
+      original_ranking,
+      changed_ranking,
+    )
 
 if __name__ == "__main__":
   unittest.main()

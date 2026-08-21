@@ -230,7 +230,7 @@ def calculate_price_volume_factor_scores(
       f"Benchmark {benchmark} não encontrado "
       "nos dados de preços."
     )
-    
+
   ranking_prices = prices.drop(
     columns=[benchmark],
     errors="ignore",
@@ -308,3 +308,59 @@ def calculate_price_volume_factor_scores(
   factors = factors.sort_values("score_preliminar", ascending=False)
 
   return factors
+
+def calculate_out_of_sample_factor_scores(
+  prices,
+  volumes,
+  evaluation_start,
+  benchmark="SPY",
+  momentum_weight=40,
+  risk_weight=35,
+  liquidity_weigth=25,
+):
+  """
+  Calcula o ranking usando somente os dados anteriores
+  ao início do periodo de avaliação.
+
+  Dados da data de avaliação em diante são ignorados.
+  """
+  if not isinstance(prices.index, pd.DatetimeIndex):
+    raise TypeError(
+      "O índice de prices deve ser um DatetimeIndex."
+    )
+
+  evaluation_start = pd.Timestamp(evaluation_start)
+
+  formation_prices = prices.loc[
+    prices.index < evaluation_start
+  ].copy()
+
+  formation_volumes = volumes.reindex(
+    index=formation_prices.index,
+    columns=formation_prices.columns,
+  )
+
+  if formation_prices.empty:
+    raise ValueError(
+      "Não existem dados anteriores ao periodo de avaliação.."
+    )
+
+  if benchmark not in formation_prices.columns:
+    raise ValueError(
+      f"O benchmark {benchmark} é obrigatório para calcular o ranking."
+    )
+
+  if formation_prices[benchmark].dropna().shape[0] < 253:
+    raise ValueError(
+      "O período de formação precisa ter pelo menos "
+      "253 observações válidas ao benchmark."
+    )
+
+  return calculate_price_volume_factor_scores(
+    prices=formation_prices,
+    volumes=formation_volumes,
+    benchmark=benchmark,
+    momentum_weight=momentum_weight,
+    risk_weight=risk_weight,
+    liquidity_weight=liquidity_weigth,
+  )
