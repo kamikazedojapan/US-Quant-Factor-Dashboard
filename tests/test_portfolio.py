@@ -6,7 +6,7 @@ from src.portfolio import (
   calculate_evaluation_period_portfolio,
 )
 
-class TestEqualWeightPortifolio(unittest.TestCase):
+class TestEqualWeightPortfolio(unittest.TestCase):
   def test_total_return_includes_all_daily_returns(self):
     dates = pd.to_datetime(
       [
@@ -77,7 +77,7 @@ class TestEqualWeightPortifolio(unittest.TestCase):
       (
         portfolio["curve"].index
         >= evaluation_start
-    ).all
+    ).all()
   )
 
 if __name__ == "__main__":
