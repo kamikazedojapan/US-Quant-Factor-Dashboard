@@ -103,6 +103,51 @@ def calculate_equal_weight_portfolio(prices, tickers):
         "max_drawdown": max_drawdown,
     }
 
+def calculate_evaluation_period_portfolio(
+  prices,
+  tickers,
+  evaluation_start,
+  evaluation_end=None,
+):
+  """
+  Calcula a carteira Equal Weight somente durante
+  o periodo de avaliação.
+  Dados anterioress ao ínicio da avaliação são ignorados.
+  """
+  if not isinstance(prices.index, pd.DatetimeIndex):
+    raise TypeError(
+      "O índice de prices deve ser um DatetimeIndex."
+    )
+
+  evaluation_start = pd.Timestamp(evaluation_start)
+
+  evaluation_prices = prices.loc[
+    prices.index >= evaluation_start
+  ].copy()
+
+  if evaluation_end is not None:
+    evaluation_end = pd.Timestamp(evaluation_end)
+
+    if evaluation_end < evaluation_start:
+      raise ValueError(
+        "A data final da avaliação não pode ser "
+        "anterior à data inicial."
+      )
+
+    evaluation_prices = evaluation_prices.loc[
+      evaluation_prices.index <= evaluation_end
+    ]
+
+  if evaluation_prices.empty:
+    raise ValueError(
+      "Não existem preços disponíveis no periodo de avaliação."
+    )
+
+  return calculate_equal_weight_portfolio(
+    prices=evaluation_prices,
+    tickers=tickers,
+  )
+
 def build_portfolio_diagnosis(portfolio, metrics, benchmark="SPY"):
     """
     Compara uma carteira com o benchmark e gera um diagnóstico simples.
