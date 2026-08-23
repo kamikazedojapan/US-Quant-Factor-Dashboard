@@ -80,5 +80,110 @@ class TestEqualWeightPortfolio(unittest.TestCase):
     ).all()
   )
 
+  def test_evaluation_porfolio_respects_end_date(self):
+    dates = pd.to_datetime(
+      [
+        "2024-12-31",
+        "2025-01-02",
+        "2025-01-03",
+        "2025-01-06",
+      ]
+    )
+    prices = pd.DataFrame(
+      {
+        "AAA": [50.0, 100.0, 110.0, 121.0],
+        "BBB": [50.0, 100.0, 110.0, 121.0],
+      },
+      index=dates
+    )
+
+    evaluation_start = pd.Timestamp("2025-01-01")
+    evaluation_end = pd.Timestamp("2025-01-03")
+
+    portfolio = calculate_evaluation_period_portfolio(
+      prices=prices,
+      tickers=["AAA", "BBB"],
+      evaluation_start=evaluation_start,
+      evaluation_end=evaluation_end,
+    )
+
+    self.assertIsNotNone(portfolio)
+    self.assertAlmostEqual(
+      portfolio["total_return"],
+      0.10,
+      places=10,
+    )
+    self.assertLessEqual(
+      portfolio["curve"].index.max(),
+      evaluation_end,
+    )
+
+  def test_evaluation_portfolio_rejects_end_before_start(self):
+    dates = pd.to_datetime(
+      [
+        "2025-01-02",
+        "2025-01-03",
+      ]
+    )
+    prices = pd.DataFrame(
+      {
+        "AAA": [100.0, 110.0],
+      },
+      index=dates,
+    )
+
+    with self.assertRaisesRegex(
+      ValueError,
+      "não pode ser anterior",
+    ):
+      calculate_evaluation_period_portfolio(
+        prices=prices,
+        tickers=["AAA"],
+        evaluation_start="2025-01-03",
+        evaluation_end="2025-01-02",
+      )
+
+  def test_evaluation_portfolio_rejects_non_datetime_index(self):
+    prices = pd.DataFrame(
+      {
+        "AAA": [100.0, 110.0],
+      },
+      index=[0, 1],
+    )
+
+    with self.assertRaisesRegex(
+      TypeError,
+      "DatetimeIndex",
+    ):
+      calculate_evaluation_period_portfolio(
+        prices=prices,
+        tickers=["AAA"],
+        evaluation_start="2025-01-01",
+      )
+
+  def test_evaluation_portfolio_rejects_period_without_prices(self):
+    dates = pd.to_datetime(
+      [
+        "2025-01-02",
+        "2025-01-03",
+      ]
+    )
+    prices = pd.DataFrame(
+      {
+        "AAA": [100.0, 110.0],
+      },
+      index=dates,
+    )
+
+    with self.assertRaisesRegex(
+      ValueError,
+      "Não existem preços disponíveis",
+    ):
+      calculate_evaluation_period_portfolio(
+        prices=prices,
+        tickers=["AAA"],
+        evaluation_start="2026-01-01",
+      )
+
 if __name__ == "__main__":
   unittest.main()
