@@ -4,7 +4,47 @@ import pandas as pd
 from src.portfolio import (
   calculate_equal_weight_portfolio,
   calculate_evaluation_period_portfolio,
+  clean_ticker_list,
 )
+
+class TestCleanTickerList(unittest.TestCase):
+  def test_returns_empty_list_when_tickers_is_none(self):
+    self.assertEqual(
+      clean_ticker_list(None),
+      [],
+    )
+
+  def test_accepts_single_ticker_string(self):
+    self.assertEqual(
+      clean_ticker_list("SPY"),
+      ["SPY"],
+    )
+
+  def test_flattens_supported_collections_and_ignores_invalid_values(self):
+    tickers = [
+      "AAA",
+      ["BBB", 123],
+      ("CCC", None),
+      {"DDD"},
+      456,
+    ]
+
+    self.assertEqual(
+      clean_ticker_list(tickers),
+      ["AAA", "BBB", "CCC", "DDD"],
+    )
+
+  def test_removes_duplicates_preserving_original_order(self):
+    tickers = [
+      "AAA",
+      ["BBB", "AAA"],
+      ("CCC", "BBB"),
+    ]
+
+    self.assertEqual(
+      clean_ticker_list(tickers),
+      ["AAA", "BBB", "CCC"],
+    )
 
 class TestEqualWeightPortfolio(unittest.TestCase):
   def test_total_return_includes_all_daily_returns(self):
@@ -184,6 +224,33 @@ class TestEqualWeightPortfolio(unittest.TestCase):
         tickers=["AAA"],
         evaluation_start="2026-01-01",
       )
+
+  def test_duplicate_tickers_do_not_change_portfolio_weights(self):
+    dates = pd.to_datetime(
+      [
+        "2025-01-02",
+        "2025-01-03",
+      ]
+    )
+    prices = pd.DataFrame(
+      {
+        "AAA": [100.0, 110.0],
+        "BBB": [100.0, 100.0],
+      },
+      index=dates
+    )
+
+    portfolio = calculate_equal_weight_portfolio(
+      prices=prices,
+      tickers=["AAA", "AAA", "BBB"],
+    )
+
+    self.assertIsNotNone(portfolio)
+    self.assertAlmostEqual(
+      portfolio["total_return"],
+      0.05,
+      places=10,
+    )
 
 if __name__ == "__main__":
   unittest.main()

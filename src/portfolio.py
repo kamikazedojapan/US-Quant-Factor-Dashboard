@@ -3,41 +3,43 @@ import pandas as pd
 
 def clean_ticker_list(tickers):
     """
-    Limpa a lista de tickers para evitar listas aninhadas, tuplas ou valores inválidos.
+    Retorna uma lista de tickers válidos, sem repetições.
+    Aceita uma string individual ou coleções de primeiro nível,
+    ignorando valores que não sejam strings.
     """
     if tickers is None:
-        return []
+      return []
+
+    if isinstance(tickers, str):
+      tickers = [tickers]
 
     clean_tickers = []
+    seen_tickers = set()
 
     for item in tickers:
-        if isinstance(item, str):
-            clean_tickers.append(item)
+      if isinstance(item, str):
+        candidates = [item]
+      elif isinstance(item, (list, tuple, set)):
+        candidates = item
+      else:
+        candidates = []
 
-        elif isinstance(item, (list, tuple, set)):
-            for ticker in item:
-                if isinstance(ticker, str):
-                    clean_tickers.append(ticker)
+      for ticker in candidates:
+        if (
+          isinstance(ticker, str)
+          and ticker not in seen_tickers
+        ):
+          clean_tickers.append(ticker)
+          seen_tickers.add(ticker)
 
     return clean_tickers
+
 
 def calculate_equal_weight_portfolio(prices, tickers):
     """
     Calcula uma carteira teórica com pesos iguais.
     """
-    if tickers is None:
-      return None
-
-    clean_tickers = []
-
-    for item in tickers:
-      if isinstance(item, str):
-        clean_tickers.append(item)
-
-      elif isinstance(item, (list, tuple, set)):
-        for ticker in item:
-          if isinstance(ticker, str):
-            clean_tickers.append(ticker)
+    clean_tickers = clean_ticker_list(tickers)
 
     valid_tickers = [
       ticker
