@@ -151,65 +151,118 @@ def calculate_evaluation_period_portfolio(
   )
 
 def build_portfolio_diagnosis(portfolio, metrics, benchmark="SPY"):
-    """
-    Compara uma carteira com o benchmark e gera um diagnóstico simples.
-    """
-    if portfolio is None:
-        return None, "Não foi possível calcular o diagnóstico da carteira."
+  """
+  Compara uma carteira com o benchmark e gera um diagnóstico simples.
+  """
+  if portfolio is None:
+    return (
+      None,
+      "Não foi possível calcular o diagnóstico da carteira.",
+    )
 
-    if metrics.empty or benchmark not in metrics["Ticker"].values:
-        return None, f"Benchmark {benchmark} não encontrado nas métricas."
+  if (
+    metrics.empty
+    or benchmark not in metrics["Ticker"].values
+  ):
+    return (
+      None,
+      f"Benchmark {benchmark} não encontrado nas métricas.",
+    )
 
-    benchmark_metrics = metrics[metrics["Ticker"] == benchmark].iloc[0]
+  benchmark_metrics = metrics[
+    metrics["Ticker"] == benchmark
+  ].iloc[0]
 
-    diagnosis_data = [
-        {
-            "Métrica": "CAGR",
-            "Carteira": portfolio["cagr"],
-            "Benchmark": benchmark_metrics["CAGR"],
-            "Melhor quando": "Maior",
-            "Resultado": "Melhor" if portfolio["cagr"] > benchmark_metrics["CAGR"] else "Pior",
-        },
-        {
-            "Métrica": "Sharpe Ratio",
-            "Carteira": portfolio["sharpe"],
-            "Benchmark": benchmark_metrics["Sharpe"],
-            "Melhor quando": "Maior",
-            "Resultado": "Melhor" if portfolio["sharpe"] > benchmark_metrics["Sharpe"] else "Pior",
-        },
-        {
-            "Métrica": "Volatilidade",
-            "Carteira": portfolio["volatility"],
-            "Benchmark": benchmark_metrics["Volatilidade"],
-            "Melhor quando": "Menor",
-            "Resultado": "Melhor" if portfolio["volatility"] < benchmark_metrics["Volatilidade"] else "Pior",
-        },
-        {
-            "Métrica": "Max Drawdown",
-            "Carteira": portfolio["max_drawdown"],
-            "Benchmark": benchmark_metrics["Max Drawdown"],
-            "Melhor quando": "Menos negativo",
-            "Resultado": (
-                "Melhor"
-                if portfolio["max_drawdown"] > benchmark_metrics["Max Drawdown"]
-                else "Pior"
-            ),
-        },
+  metric_definitions = [
+    {
+      "name": "CAGR",
+      "portfolio_key": "cagr",
+      "benchmark_column": "CAGR",
+      "better_when": "Maior",
+      "higher_is_better": True,
+    },
+    {
+      "name": "Sharpe Ratio",
+      "portfolio_key": "sharpe",
+      "benchmark_column": "Sharpe",
+      "better_when": "Maior",
+      "higher_is_better": True,
+    },
+    {
+      "name": "Volatilidade",
+      "portfolio_key": "volatility",
+      "benchmark_column": "Volatilidade",
+      "better_when": "Menor",
+      "higher_is_better": False,
+    },
+    {
+      "name": "Max Drawdown",
+      "portfolio_key": "max_drawdown",
+      "benchmark_column": "Max Drawdown",
+      "better_when": "Menos negativo",
+      "higher_is_better": True,
+    },
+  ]
+
+  diagnosis_data = []
+
+  for definition in metric_definitions:
+    portfolio_value = portfolio[
+      definition["portfolio_key"]
     ]
 
-    diagnosis_df = pd.DataFrame(diagnosis_data)
+    benchmark_value = benchmark_metrics[
+      definition["benchmark_column"]
+    ]
 
-    positive_results = (diagnosis_df["Resultado"] == "Melhor").sum()
-
-    if positive_results == 4:
-        summary = "A carteira superou o benchmark em todas as métricas principais."
-    elif positive_results == 3:
-        summary = "A carteira teve desempenho superior ao benchmark na maior parte das métricas."
-    elif positive_results == 2:
-        summary = "A carteira teve desempenho misto em relação ao benchmark."
-    elif positive_results == 1:
-        summary = "A carteira ficou abaixo do benchmark na maior parte das métricas."
+    if definition["higher_is_better"]:
+      is_better = portfolio_value > benchmark_value
     else:
-        summary = "A carteira ficou pior que o benchmark em todas as métricas principais."
+      is_better = portfolio_value < benchmark_value
 
-    return diagnosis_df, summary
+    diagnosis_data.append(
+      {
+        "Métrica": definition["name"],
+        "Carteira": portfolio_value,
+        "Benchmark": benchmark_value,
+        "Melhor quando": definition["better_when"],
+        "Resultado": (
+          "Melhor"
+          if is_better
+          else "Pior"
+        ),
+      }
+    )
+
+  diagnosis_df = pd.DataFrame(diagnosis_data)
+
+  positive_results = (
+    diagnosis_df["Resultado"] == "Melhor"
+  ).sum()
+
+  summaries = {
+    4: (
+      "A carteira superou o benchmark "
+      "em todas as métricas principais."
+    ),
+    3: (
+      "A carteira teve desempenho superior ao benchmark "
+      "na maior parte das métricas."
+    ),
+    2: (
+      "A carteira teve desempenho misto "
+      "em relação ao benchmark."
+    ),
+    1: (
+      "A carteira ficou abaixo do benchmark "
+      "na maior parte das métricas."
+    ),
+    0: (
+      "A carteira ficou pior que o benchmark "
+      "em todas as métricas principais."
+    ),
+  }
+
+  summary = summaries[positive_results]
+
+  return diagnosis_df, summary
