@@ -9,7 +9,6 @@ from src.factors import (
   calculate_out_of_sample_factor_scores,
 )
 
-
 class TestFactorRanking(unittest.TestCase):
   def test_benchmark_is_not_included_in_ranking(self):
     dates = pd.bdate_range(
@@ -341,6 +340,7 @@ class TestFactorRanking(unittest.TestCase):
       original_ranking,
       changed_ranking,
     )
+
 
 if __name__ == "__main__":
   unittest.main()
