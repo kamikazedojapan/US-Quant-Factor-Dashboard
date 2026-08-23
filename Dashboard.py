@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 
 from src.data_loader import download_market_data, get_sp500_tickers
-from src.factors import calculate_price_volume_factor_scores
+from src.factors import calculate_out_of_sample_factor_scores
 from src.metrics import (
   build_risk_return_chart,
   calculate_asset_metrics,
@@ -12,7 +12,7 @@ from src.metrics import (
 )
 from src.portfolio import (
   build_portfolio_diagnosis,
-  calculate_equal_weight_portfolio,
+  calculate_evaluation_period_portfolio,
 )
 
 st.set_page_config(
@@ -67,13 +67,18 @@ with st.sidebar:
     )
 
     start_date = st.date_input(
-        "Data inicial",
+        "Data inicial da avaliação",
         value=datetime(2020, 1, 1),
     )
 
     end_date = st.date_input(
-        "Data final",
+        "Data final da avaliação",
         value=datetime.today(),
+    )
+
+    st.caption(
+      "O ranking Top N será formado usando dados anteriores "
+      "à data inicial da avaliação."
     )
 
     show_spy = st.checkbox(
@@ -159,13 +164,52 @@ download_tickers = selected_tickers.copy()
 if "SPY" not in download_tickers:
     download_tickers.append("SPY")
 
+evaluation_start = pd.Timestamp(start_date)
+evaluation_end = pd.Timestamp(end_date)
+
+if evaluation_end <= evaluation_start:
+  st.error(
+    "A data final deve ser posterior à data inicial."
+  )
+  st.stop()
+
+# Margem suficiente para obter pelo menos 253 pregões.
+formation_download_start = (
+  evaluation_start - pd.DateOffset(months=18)
+)
 
 prices, volumes = download_market_data(
     tickers=download_tickers,
-    start_date=start_date,
+    start_date=formation_download_start,
     end_date=end_date,
 )
 
+if prices.empty:
+  st.error(
+    "Não foi possível baixar os dados. "
+    "Verifique os tickers ou o periodo escolhido."
+  )
+  st.stop()
+
+evaluation_prices = prices.loc[
+  (
+    prices.index >= evaluation_start
+  ) & (
+    prices.index <= evaluation_end
+  )
+].copy()
+
+if evaluation_prices.empty:
+  st.error(
+    "Não existem dados disponíveis no periodo de avaliação."
+  )
+  st.stop()
+
+available_selected_tickers = [
+  ticker
+  for ticker in selected_tickers
+  if ticker in prices.columns
+]
 
 if "SPY" not in prices.columns:
   st.error(
@@ -175,35 +219,35 @@ if "SPY" not in prices.columns:
   )
   st.stop()
 
-
-available_selected_tickers = [
-    ticker for ticker in selected_tickers if ticker in prices.columns
-]
-
-
 if not available_selected_tickers:
     st.error("Nenhum dos tickers selecionados retornou dados válidos.")
     st.stop()
 
 
-metrics = calculate_asset_metrics(prices)
-normalized_prices = normalize_prices(prices)
+metrics = calculate_asset_metrics(evaluation_prices)
+normalized_prices = normalize_prices(evaluation_prices)
 
-manual_portfolio = calculate_equal_weight_portfolio(
+manual_portfolio = calculate_evaluation_period_portfolio(
     prices=prices,
     tickers=available_selected_tickers,
+    evaluation_start=evaluation_start,
+    evaluation_end=evaluation_end,
 )
 
 
-factor_scores = calculate_price_volume_factor_scores(
+try:
+  factor_scores = calculate_out_of_sample_factor_scores(
     prices=prices,
     volumes=volumes,
+    evaluation_start=evaluation_start,
     benchmark="SPY",
     momentum_weight=momentum_weight,
     risk_weight=risk_weight,
-    liquidity_weight=liquidity_weight,
-)
-
+    liquidity_weigth=liquidity_weight,
+  )
+except ValueError as error:
+  st.error(str(error))
+  st.stop()
 
 ranking_view = factor_scores.copy()
 
@@ -220,11 +264,20 @@ top_quant_tickers = [
   if isinstance(ticker, str)
 ]
 
-quant_portfolio = calculate_equal_weight_portfolio(
-    prices=prices,
-    tickers=top_quant_tickers,
+quant_portfolio = calculate_evaluation_period_portfolio(
+  prices=prices,
+  tickers=top_quant_tickers,
+  evaluation_start=evaluation_start,
+  evaluation_end=evaluation_end,
 )
 
+st.info(
+  f"Ranking formado com dados anteriores a "
+  f"{evaluation_start.strftime('%d/%m/%Y')}. "
+  f"Desempenho avaliado entre "
+  f"{evaluation_start.strftime('%d/%m/%Y')} e "
+  f"{evaluation_end.strftime('%d/%m/%Y')}."
+)
 
 st.subheader("Resumo da Carteira Manual Equal Weight")
 
