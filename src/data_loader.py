@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 import yfinance as yf
 
+
 @st.cache_data(show_spinner=False)
 def get_sp500_tickers():
   """
@@ -24,10 +25,11 @@ def get_sp500_tickers():
     )
     st.stop()
 
+
 def extract_market_data(data, tickers):
   """
   Extrai e organiza preços e volumes retornados
-  Pelo Yahoo Finance.
+  pelo Yahoo Finance.
   """
   if data.empty or not tickers:
     return pd.DataFrame(), pd.DataFrame()
@@ -43,7 +45,7 @@ def extract_market_data(data, tickers):
     prices.columns = [ticker]
 
     volumes = data[["Volume"]].copy()
-    volumes.columns =[ticker]
+    volumes.columns = [ticker]
 
   prices = (
     prices
