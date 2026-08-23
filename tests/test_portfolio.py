@@ -46,6 +46,7 @@ class TestCleanTickerList(unittest.TestCase):
       ["AAA", "BBB", "CCC"],
     )
 
+
 class TestEqualWeightPortfolio(unittest.TestCase):
   def test_total_return_includes_all_daily_returns(self):
     dates = pd.to_datetime(
@@ -251,6 +252,7 @@ class TestEqualWeightPortfolio(unittest.TestCase):
       0.05,
       places=10,
     )
+
 
 if __name__ == "__main__":
   unittest.main()
