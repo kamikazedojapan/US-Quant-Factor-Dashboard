@@ -243,7 +243,7 @@ try:
     benchmark="SPY",
     momentum_weight=momentum_weight,
     risk_weight=risk_weight,
-    liquidity_weigth=liquidity_weight,
+    liquidity_weight=liquidity_weight,
   )
 except ValueError as error:
   st.error(str(error))

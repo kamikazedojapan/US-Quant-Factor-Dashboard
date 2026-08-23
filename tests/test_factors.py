@@ -308,6 +308,7 @@ class TestFactorRanking(unittest.TestCase):
       volumes=volumes,
       evaluation_start=evaluation_start,
       benchmark="SPY",
+      liquidity_weight=25,
     )
 
     changed_prices = prices.copy()
@@ -333,6 +334,7 @@ class TestFactorRanking(unittest.TestCase):
       volumes=changed_volumes,
       evaluation_start=evaluation_start,
       benchmark="SPY",
+      liquidity_weight=25,
     )
 
     pd.testing.assert_frame_equal(

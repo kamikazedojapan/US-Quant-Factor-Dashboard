@@ -316,7 +316,7 @@ def calculate_out_of_sample_factor_scores(
   benchmark="SPY",
   momentum_weight=40,
   risk_weight=35,
-  liquidity_weigth=25,
+  liquidity_weight=25,
 ):
   """
   Calcula o ranking usando somente os dados anteriores
@@ -362,5 +362,5 @@ def calculate_out_of_sample_factor_scores(
     benchmark=benchmark,
     momentum_weight=momentum_weight,
     risk_weight=risk_weight,
-    liquidity_weight=liquidity_weigth,
+    liquidity_weight=liquidity_weight,
   )
