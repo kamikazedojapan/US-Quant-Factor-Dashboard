@@ -32,12 +32,19 @@ def calculate_asset_metrics(prices):
         else:
             cagr = np.nan
 
+        return_mean = returns.mean()
+        return_std = returns.std()
+
         volatility = returns.std() * np.sqrt(252)
 
-        if returns.std() != 0:
-            sharpe = (returns.mean() / returns.std()) * np.sqrt(252)
+        if pd.notna(return_std) and return_std != 0:
+          sharpe = (
+            return_mean
+            / return_std
+            * np.sqrt(252)
+          )
         else:
-            sharpe = np.nan
+          sharpe = np.nan
 
         normalized = series / first_price
         drawdown = normalized / normalized.cummax() - 1
