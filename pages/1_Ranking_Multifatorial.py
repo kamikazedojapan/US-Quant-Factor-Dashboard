@@ -4,8 +4,8 @@ import pandas as pd
 import streamlit as st
 
 from src.data_loader import download_market_data, get_sp500_tickers
-from src.factors import calculate_price_volume_factor_scores
-from src.portfolio import calculate_equal_weight_portfolio
+from src.factors import calculate_out_of_sample_factor_scores
+from src.portfolio import calculate_evaluation_period_portfolio
 
 
 st.set_page_config(
@@ -71,15 +71,20 @@ with st.sidebar:
     )
 
     start_date = st.date_input(
-        "Data inicial",
+        "Data inicial da avaliação",
         value=datetime(2020, 1, 1),
         key="ranking_start_date",
     )
 
     end_date = st.date_input(
-        "Data final",
+        "Data final da avaliação",
         value=datetime.today(),
         key="ranking_end_date",
+    )
+
+    st.caption(
+        "O ranking Top N será formado usando somente dados anteriores "
+        "à data inicial da avaliação."
     )
 
     st.markdown("---")
@@ -154,22 +159,46 @@ download_tickers = selected_tickers.copy()
 if "SPY" not in download_tickers:
     download_tickers.append("SPY")
 
+evaluation_start = pd.Timestamp(start_date)
+evaluation_end = pd.Timestamp(end_date)
+
+if evaluation_end <= evaluation_start:
+    st.error("A data final deve ser posterior à data inicial.")
+    st.stop()
+
+# Inclui margem para reunir pelo menos 253 pregões antes da avaliação.
+formation_download_start = evaluation_start - pd.DateOffset(months=18)
 
 prices, volumes = download_market_data(
     tickers=download_tickers,
-    start_date=start_date,
+    start_date=formation_download_start,
     end_date=end_date,
 )
 
 
 if prices.empty:
-    if "SPY" not in prices.columns:
-      st.error(
+    st.error(
+        "Não foi possível baixar os dados. "
+        "Verifique os tickers ou o período escolhido."
+    )
+    st.stop()
+
+if "SPY" not in prices.columns:
+    st.error(
         "Não foi possível obter os dados do SPY. "
         "O benchmark é necessário para calcular "
         "o fator de baixo risco."
-      )
-      st.stop()
+    )
+    st.stop()
+
+evaluation_prices = prices.loc[
+    (prices.index >= evaluation_start)
+    & (prices.index <= evaluation_end)
+]
+
+if evaluation_prices.empty:
+    st.error("Não existem dados disponíveis no período de avaliação.")
+    st.stop()
 
 
 available_selected_tickers = [
@@ -182,14 +211,19 @@ if not available_selected_tickers:
     st.stop()
 
 
-factor_scores = calculate_price_volume_factor_scores(
-    prices=prices,
-    volumes=volumes,
-    benchmark="SPY",
-    momentum_weight=momentum_weight,
-    risk_weight=risk_weight,
-    liquidity_weight=liquidity_weight,
-)
+try:
+    factor_scores = calculate_out_of_sample_factor_scores(
+        prices=prices,
+        volumes=volumes,
+        evaluation_start=evaluation_start,
+        benchmark="SPY",
+        momentum_weight=momentum_weight,
+        risk_weight=risk_weight,
+        liquidity_weight=liquidity_weight,
+    )
+except ValueError as error:
+    st.error(str(error))
+    st.stop()
 
 
 ranking_view = factor_scores.copy()
@@ -226,9 +260,19 @@ top_quant_tickers = [
 ]
 
 
-quant_portfolio = calculate_equal_weight_portfolio(
+quant_portfolio = calculate_evaluation_period_portfolio(
     prices=prices,
     tickers=top_quant_tickers,
+    evaluation_start=evaluation_start,
+    evaluation_end=evaluation_end,
+)
+
+st.info(
+    f"Ranking formado com dados anteriores a "
+    f"{evaluation_start.strftime('%d/%m/%Y')}. "
+    f"Desempenho avaliado entre "
+    f"{evaluation_start.strftime('%d/%m/%Y')} e "
+    f"{evaluation_end.strftime('%d/%m/%Y')}."
 )
 
 if quant_portfolio:
