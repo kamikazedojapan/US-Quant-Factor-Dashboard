@@ -4,6 +4,7 @@ import pandas as pd
 def clean_ticker_list(tickers):
     """
     Retorna uma lista de tickers válidos, sem repetições.
+    
     Aceita uma string individual ou coleções de primeiro nível,
     ignorando valores que não sejam strings.
     """
@@ -114,6 +115,7 @@ def calculate_evaluation_period_portfolio(
   """
   Calcula a carteira Equal Weight somente durante
   o periodo de avaliação.
+
   Dados anterioress ao ínicio da avaliação são ignorados.
   """
   if not isinstance(prices.index, pd.DatetimeIndex):

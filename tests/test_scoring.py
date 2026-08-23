@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from src.factors import percentile_score
+from src.scoring import percentile_score
 
 class TestPercentileScore(unittest.TestCase):
   def test_returns_nan_when_all_values_are_invalid(self):
