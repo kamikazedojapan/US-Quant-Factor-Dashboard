@@ -1,53 +1,7 @@
 import numpy as np
 import pandas as pd
 
-def percentile_score(series, higher_is_better=True):
-  """
-  Converte uma série numérica em score de 0 a 100.
-
-  O pior valor recebe 0.
-  O melhor valor recebe 100.
-  """
-  clean_series = series.replace(
-      [np.inf, -np.inf],
-      np.nan,
-  )
-
-  valid_count = clean_series.notna().sum()
-
-  if valid_count == 0:
-      return pd.Series(
-          np.nan,
-          index=series.index,
-          dtype=float,
-      )
-
-  if valid_count == 1:
-      score = pd.Series(
-          np.nan,
-          index=series.index,
-          dtype=float,
-      )
-
-      score.loc[clean_series.notna()] = 50.0
-
-      return score
-
-  ranks = clean_series.rank(
-      method="average",
-      ascending=True,
-  )
-
-  score = (
-      (ranks - 1)
-      / (valid_count - 1)
-      * 100
-  )
-
-  if not higher_is_better:
-      score = 100 - score
-
-  return score
+from src.scoring import percentile_score
 
 def calculate_momentum_score(prices):
   """
