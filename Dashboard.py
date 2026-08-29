@@ -288,6 +288,20 @@ quant_portfolio = calculate_evaluation_period_portfolio(
   evaluation_end=evaluation_end,
 )
 
+st.subheader("Visão Geral da Análise")
+
+col1, col2, col3, col4 = st.columns(4)
+
+col1.metric("Ações analisadas", len(available_selected_tickers))
+col2.metric("Ações no Top Ranking", len(top_quant_tickers))
+col3.metric("Setor", selected_sector)
+col4.metric("Benchmark", "SPY")
+
+st.caption(
+  "Esta página resume a carteira manual, a carteira quantitativa "
+  "e o desempenho relativo durante o periodo de avaliação."
+)
+
 st.info(
   f"Ranking formado com dados anteriores a "
   f"{evaluation_start.strftime('%d/%m/%Y')}. "
@@ -312,7 +326,21 @@ if manual_portfolio:
 else:
     st.warning("Não foi possível calcular a carteira manual com os dados disponíveis.")
 
-st.subheader("Diagnóstico da Carteira Quantitativa")
+st.subheader("Resumo da Carteira Quantitativa")
+
+if quant_portfolio:
+  col1, col2, col3, col4 = st.columns(4)
+
+  col1.metric("Retorno Total", f"{quant_portfolio['total_return']:.2f}")
+  col2.metric("CAGR", f"{quant_portfolio['cagr']:.2f}")
+  col3.metric("Volatilidade", f"{quant_portfolio['volatility']:.2f}")
+  col4.metric("Max Drawdown", f"{quant_portfolio['max_drawdown']:.2f}")
+
+  col5, col6 = st.columns(2)
+  col5.metric("Sharpe Ratio", f"{quant_portfolio['sharpe']:.2f}")
+  col6.metric("Ações no Top Ranking", len(top_quant_tickers))
+else:
+  st.waring("Não foi possível calcular a carteira quantitativa.")
 
 diagnosis_df, diagnosis_summary = build_portfolio_diagnosis(
   portfolio=quant_portfolio,
@@ -324,12 +352,7 @@ if diagnosis_df is not None:
   st.info(diagnosis_summary)
 
   st.dataframe(
-    diagnosis_df.style.format(
-      {
-        "Carteira": "{:.2f}",
-        "Benchmark": "{:.2f}",
-      }
-    ),
+    diagnosis_df,
     use_container_width=True,
   )
 
