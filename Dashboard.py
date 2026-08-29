@@ -254,6 +254,23 @@ ranking_view = factor_scores.copy()
 if "SPY" in ranking_view.index:
     ranking_view = ranking_view.drop(index="SPY")
 
+ranking_view = ranking_view.dropna(subset=["score_preliminar"])
+
+if ranking_view.empty:
+  st.warning(
+    "O ranking não gerou ações válidas para os filtros atuais. "
+    "Tente aumentar o periodo de análise, reduzir a quantidade de ações "
+    "ou verificar se os dados foram baixados corretamente."
+  )
+
+  with st.expander("Diagnóstico dos dados"):
+    st.write("Tickers selecionados:", selected_tickers)
+    st.write("Colunas de preços baixadas:", list(prices.columns))
+    st.write("Colunas de volume baixadas:", list(volumes.columns))
+    st.dataframe(factor_scores)
+
+  st.stop()
+
 top_n_quant = min(top_n_quant, len(ranking_view))
 
 top_quant_tickers = ranking_view.head(top_n_quant).index.tolist()

@@ -253,11 +253,30 @@ def calculate_price_volume_factor_scores(
   risk_weight = risk_weight / total_weight
   liquidity_weight = liquidity_weight / total_weight
 
-  factors["score_preliminar"] = (
-      momentum_weight * factors["score_momentum"]
-      + risk_weight * factors["score_risco"]
-      + liquidity_weight * factors["score_liquidez"]
+  score_weights = {
+    "score_momentum": momentum_weight,
+    "score_risco": risk_weight,
+    "score_liquidez": liquidity_weight,
+  }
+
+  weighted_scores = pd.DataFrame(index=factors.index)
+  available_weights = pd.Series(0.0, index=factors.index)
+
+  for column, weight in score_weights.items():
+    valid_score = factors[column].notna()
+
+    weighted_scores[column] = factors[column] * weight
+    available_weights = available_weights + valid_score.astype(float) * weight
+
+  score_sum = weighted_scores.sum(axis=1, skipna=True)
+
+  factors["score_preliminar"] = np.where(
+    available_weights > 0,
+    score_sum / available_weights,
+    np.nan,
   )
+
+  factors = factors.dropna(subset=["score_preliminar"])
 
   factors = factors.sort_values("score_preliminar", ascending=False)
 

@@ -1,31 +1,28 @@
 from datetime import datetime
 
-import pandas as pd
 import streamlit as st
 
 from src.data_loader import download_market_data, get_sp500_tickers
-from src.factors import calculate_out_of_sample_factor_scores
-from src.portfolio import calculate_evaluation_period_portfolio
+from src.factors import calculate_price_volume_factor_scores
+from src.portfolio import calculate_equal_weight_portfolio
 
 
 st.set_page_config(
     page_title="Ranking Multifatorial",
-    page_icon="📈",
+    page_icon="📊",
     layout="wide",
 )
 
 
 st.title("Ranking Multifatorial")
 st.caption(
-    "Ranking quantitativo preliminar de ações americanas com base em momentum, "
+    "Página dedicada ao ranking quantitativo preliminar com base em momentum, "
     "baixo risco e liquidez."
 )
 
 
 sp500_df = get_sp500_tickers()
-
 sp500_df["sector"] = sp500_df["sector"].fillna("Sem setor")
-sp500_df["industry"] = sp500_df["industry"].fillna("Sem indústria")
 
 sector_options = ["Todos"] + sorted(
     sp500_df["sector"].dropna().unique().tolist()
@@ -71,20 +68,21 @@ with st.sidebar:
     )
 
     start_date = st.date_input(
-        "Data inicial da avaliação",
+        "Data inicial",
         value=datetime(2020, 1, 1),
         key="ranking_start_date",
     )
 
     end_date = st.date_input(
-        "Data final da avaliação",
+        "Data final",
         value=datetime.today(),
         key="ranking_end_date",
     )
 
-    st.caption(
-        "O ranking Top N será formado usando somente dados anteriores "
-        "à data inicial da avaliação."
+    show_spy = st.checkbox(
+        "Adicionar SPY como benchmark",
+        value=True,
+        key="ranking_show_spy",
     )
 
     st.markdown("---")
@@ -105,7 +103,7 @@ with st.sidebar:
             min_value=1,
             max_value=selected_count,
             value=min(10, selected_count),
-            key=f"ranking_top_n_quant_{selected_sector}_{selected_count}",
+            key=f"ranking_top_n_{selected_sector}_{selected_count}",
         )
 
     st.markdown("---")
@@ -139,14 +137,13 @@ with st.sidebar:
 
     if total_weight == 0:
         st.warning("Defina pelo menos um peso maior do que zero.")
-        st.stop()
-
-    st.caption(
-        f"Distribuição atual: "
-        f"Momentum {momentum_weight / total_weight:.0%} | "
-        f"Risco {risk_weight / total_weight:.0%} | "
-        f"Liquidez {liquidity_weight / total_weight:.0%}"
-    )
+    else:
+        st.caption(
+            f"Distribuição atual: "
+            f"Momentum {momentum_weight / total_weight:.0%} | "
+            f"Risco {risk_weight / total_weight:.0%} | "
+            f"Liquidez {liquidity_weight / total_weight:.0%}"
+        )
 
 
 if not selected_tickers:
@@ -156,22 +153,13 @@ if not selected_tickers:
 
 download_tickers = selected_tickers.copy()
 
-if "SPY" not in download_tickers:
+if show_spy and "SPY" not in download_tickers:
     download_tickers.append("SPY")
 
-evaluation_start = pd.Timestamp(start_date)
-evaluation_end = pd.Timestamp(end_date)
-
-if evaluation_end <= evaluation_start:
-    st.error("A data final deve ser posterior à data inicial.")
-    st.stop()
-
-# Inclui margem para reunir pelo menos 253 pregões antes da avaliação.
-formation_download_start = evaluation_start - pd.DateOffset(months=18)
 
 prices, volumes = download_market_data(
     tickers=download_tickers,
-    start_date=formation_download_start,
+    start_date=start_date,
     end_date=end_date,
 )
 
@@ -183,26 +171,11 @@ if prices.empty:
     )
     st.stop()
 
-if "SPY" not in prices.columns:
-    st.error(
-        "Não foi possível obter os dados do SPY. "
-        "O benchmark é necessário para calcular "
-        "o fator de baixo risco."
-    )
-    st.stop()
-
-evaluation_prices = prices.loc[
-    (prices.index >= evaluation_start)
-    & (prices.index <= evaluation_end)
-]
-
-if evaluation_prices.empty:
-    st.error("Não existem dados disponíveis no período de avaliação.")
-    st.stop()
-
 
 available_selected_tickers = [
-    ticker for ticker in selected_tickers if ticker in prices.columns
+    ticker
+    for ticker in selected_tickers
+    if ticker in prices.columns
 ]
 
 
@@ -211,19 +184,14 @@ if not available_selected_tickers:
     st.stop()
 
 
-try:
-    factor_scores = calculate_out_of_sample_factor_scores(
-        prices=prices,
-        volumes=volumes,
-        evaluation_start=evaluation_start,
-        benchmark="SPY",
-        momentum_weight=momentum_weight,
-        risk_weight=risk_weight,
-        liquidity_weight=liquidity_weight,
-    )
-except ValueError as error:
-    st.error(str(error))
-    st.stop()
+factor_scores = calculate_price_volume_factor_scores(
+    prices=prices,
+    volumes=volumes,
+    benchmark="SPY",
+    momentum_weight=momentum_weight,
+    risk_weight=risk_weight,
+    liquidity_weight=liquidity_weight,
+)
 
 
 ranking_view = factor_scores.copy()
@@ -242,12 +210,6 @@ ranking_display = ranking_display.merge(
     how="left",
 )
 
-ranking_display.insert(
-    0,
-    "rank",
-    range(1, len(ranking_display) + 1),
-)
-
 
 top_n_quant = min(top_n_quant, len(ranking_view))
 
@@ -260,46 +222,23 @@ top_quant_tickers = [
 ]
 
 
-quant_portfolio = calculate_evaluation_period_portfolio(
+quant_portfolio = calculate_equal_weight_portfolio(
     prices=prices,
     tickers=top_quant_tickers,
-    evaluation_start=evaluation_start,
-    evaluation_end=evaluation_end,
 )
 
-st.info(
-    f"Ranking formado com dados anteriores a "
-    f"{evaluation_start.strftime('%d/%m/%Y')}. "
-    f"Desempenho avaliado entre "
-    f"{evaluation_start.strftime('%d/%m/%Y')} e "
-    f"{evaluation_end.strftime('%d/%m/%Y')}."
-)
 
-if quant_portfolio:
-    st.subheader("Métricas da Carteira Quantitativa")
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric("Retorno Total", f"{quant_portfolio['total_return']:.2%}")
-    col2.metric("CAGR", f"{quant_portfolio['cagr']:.2%}")
-    col3.metric("Volatilidade", f"{quant_portfolio['volatility']:.2%}")
-    col4.metric("Max Drawdown", f"{quant_portfolio['max_drawdown']:.2%}")
-
-    col5, col6 = st.columns(2)
-
-    col5.metric("Sharpe Ratio", f"{quant_portfolio['sharpe']:.2f}")
-    col6.metric("Ações no Top Ranking", len(top_quant_tickers))
+st.subheader("Resumo do Ranking")
 
 col1, col2, col3, col4 = st.columns(4)
 
 col1.metric("Ações analisadas", len(available_selected_tickers))
-col2.metric("Top Ranking", top_n_quant)
+col2.metric("Ações no Top Ranking", len(top_quant_tickers))
 col3.metric("Setor", selected_sector)
-col4.metric("Benchmark", "SPY")
+col4.metric("Benchmark", "SPY" if show_spy else "Não utilizado")
 
 
 st.markdown("---")
-
 
 st.subheader("Ranking Quantitativo Preliminar")
 
@@ -309,7 +248,6 @@ st.caption(
 )
 
 ranking_columns = [
-    "rank",
     "ticker",
     "company",
     "sector",
@@ -330,7 +268,9 @@ ranking_columns = [
 ]
 
 available_ranking_columns = [
-    column for column in ranking_columns if column in ranking_display.columns
+    column
+    for column in ranking_columns
+    if column in ranking_display.columns
 ]
 
 st.dataframe(
@@ -357,13 +297,11 @@ st.dataframe(
 
 st.markdown("---")
 
-
 st.subheader(f"Carteira Quantitativa Top {top_n_quant}")
 
 st.write("Ações selecionadas automaticamente pelo ranking quantitativo preliminar:")
 
 portfolio_columns = [
-    "rank",
     "ticker",
     "company",
     "sector",
@@ -375,7 +313,9 @@ portfolio_columns = [
 ]
 
 available_portfolio_columns = [
-    column for column in portfolio_columns if column in ranking_display.columns
+    column
+    for column in portfolio_columns
+    if column in ranking_display.columns
 ]
 
 st.dataframe(
@@ -390,10 +330,29 @@ st.dataframe(
     use_container_width=True,
 )
 
+
+if quant_portfolio:
+    st.markdown("---")
+    st.subheader("Resumo da Carteira Quantitativa")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("Retorno Total", f"{quant_portfolio['total_return']:.2%}")
+    col2.metric("CAGR", f"{quant_portfolio['cagr']:.2%}")
+    col3.metric("Volatilidade", f"{quant_portfolio['volatility']:.2%}")
+    col4.metric("Max Drawdown", f"{quant_portfolio['max_drawdown']:.2%}")
+
+    col5, col6 = st.columns(2)
+    col5.metric("Sharpe Ratio", f"{quant_portfolio['sharpe']:.2f}")
+    col6.metric("Ações no Top Ranking", len(top_quant_tickers))
+
+else:
+    st.warning("Não foi possível calcular a carteira quantitativa.")
+
+
 st.markdown("---")
 
 st.caption(
-    "Aviso: este ranking é preliminar e utiliza apenas fatores baseados em preço e volume. "
-    "Ele ainda não inclui fatores fundamentalistas como valor e qualidade. "
-    "Este projeto é educacional e não representa recomendação de investimento."
+    "Aviso: este ranking é preliminar e educacional. "
+    "Ele ainda não inclui fatores fundamentalistas como valor e qualidade."
 )
