@@ -110,18 +110,46 @@ if selected_ticker not in prices.columns:
     st.stop()
 
 
+selected_ticker_prices = prices[selected_ticker].dropna()
+
+if len(selected_ticker_prices) < 2:
+  st.warning(
+    "Não existem dados suficientes para calcular as metricas do ativo selecionados. "
+    "Tente escolher um período maior."
+  )
+
+  with st.expander("Diagnóstico dos dados"):
+    st.write("Ticker selecionado:", selected_ticker)
+    st.write("Tickers baixados:", list(prices.columns))
+    st.write("Quantidade de preços válidos:", len(selected_ticker_prices))
+
+  st.stop()
+
 metrics = calculate_asset_metrics(prices)
 normalized_prices = normalize_prices(prices)
 
 
+if metrics.empty or "Ticker" not in metrics.columns:
+  st.warning(
+    "Não foi possível calcular as métricas para os dados baixados. "
+    "Tente aumentar o período da análise."
+  )
+
+  with st.expander("Diagnóstico dos dados"):
+    st.write("Ticker selecionado:", selected_ticker)
+    st.write("Tickers baixados:", list(prices.columns))
+    st.write("Formato da tabela de preços", prices.shape)
+    st.dataframe(prices.tail())
+
+  st.stop()
+
 ticker_metrics = metrics[metrics["Ticker"] == selected_ticker]
 
 if ticker_metrics.empty:
-    st.error("Não foi possível calcular as métricas do ativo selecionado.")
-    st.stop()
+  st.error("Não foi possível calcular as métricas do ativo selecionado.")
+  st.stop()
 
 ticker_metrics = ticker_metrics.iloc[0]
-
 
 company_info = sp500_df[sp500_df["ticker"] == selected_ticker]
 
