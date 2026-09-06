@@ -288,26 +288,11 @@ quant_portfolio = calculate_evaluation_period_portfolio(
   evaluation_end=evaluation_end,
 )
 
-st.subheader("Visão Geral da Análise")
-
-col1, col2, col3, col4 = st.columns(4)
-
-col1.metric("Ações analisadas", len(available_selected_tickers))
-col2.metric("Ações no Top Ranking", len(top_quant_tickers))
-col3.metric("Setor", selected_sector)
-col4.metric("Benchmark", "SPY")
-
 st.caption(
-  "Esta página resume a carteira manual, a carteira quantitativa "
-  "e o desempenho relativo durante o periodo de avaliação."
-)
-
-st.info(
-  f"Ranking formado com dados anteriores a "
-  f"{evaluation_start.strftime('%d/%m/%Y')}. "
-  f"Desempenho avaliado entre "
-  f"{evaluation_start.strftime('%d/%m/%Y')} e "
-  f"{evaluation_end.strftime('%d/%m/%Y')}."
+  f"Ranking formado com dados anteriores a {evaluation_start.strftime('%d/%m/%Y')} "
+  f"| Avaliação: {evaluation_start.strftime('%d/%m/%Y')} até "
+  f"{evaluation_end.strftime('%d/%m/%Y')} "
+  f"| Top {top_n_quant} ações"
 )
 
 st.subheader("Resumo da Carteira Manual Equal Weight")
