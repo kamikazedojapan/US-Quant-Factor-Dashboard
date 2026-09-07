@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from src.scoring import percentile_score
+from src.scoring import combine_weighted_scores, percentile_score
 
 def calculate_momentum_score(prices):
   """
@@ -231,56 +231,24 @@ def calculate_price_volume_factor_scores(
   factors = momentum.join(risk, how="outer")
   factors = factors.join(liquidity, how="outer")
 
-  required_columns = [
-      "score_momentum",
-      "score_risco",
-      "score_liquidez",
-  ]
-
-  for column in required_columns:
-      if column not in factors.columns:
-          factors[column] = np.nan
-
-  total_weight = momentum_weight + risk_weight + liquidity_weight
-
-  if total_weight == 0:
-    momentum_weight = 40
-    risk_weight = 35
-    liquidity_weight = 25
-    total_weight = 100
-
-  momentum_weight = momentum_weight / total_weight
-  risk_weight = risk_weight / total_weight
-  liquidity_weight = liquidity_weight / total_weight
-
   score_weights = {
     "score_momentum": momentum_weight,
     "score_risco": risk_weight,
     "score_liquidez": liquidity_weight,
   }
 
-  weighted_scores = pd.DataFrame(index=factors.index)
-  available_weights = pd.Series(0.0, index=factors.index)
+  default_weights = {
+    "score_momentum": 40,
+    "score_risco": 35,
+    "score_liquidez": 25,
+  }
 
-  for column, weight in score_weights.items():
-    valid_score = factors[column].notna()
-
-    weighted_scores[column] = factors[column] * weight
-    available_weights = available_weights + valid_score.astype(float) * weight
-
-  score_sum = weighted_scores.sum(axis=1, skipna=True)
-
-  factors["score_preliminar"] = np.where(
-    available_weights > 0,
-    score_sum / available_weights,
-    np.nan,
+  return combine_weighted_scores(
+    factors=factors,
+    score_weights=score_weights,
+    final_score_column="score_preliminar",
+    default_weights=default_weights,
   )
-
-  factors = factors.dropna(subset=["score_preliminar"])
-
-  factors = factors.sort_values("score_preliminar", ascending=False)
-
-  return factors
 
 def calculate_out_of_sample_factor_scores(
   prices,
