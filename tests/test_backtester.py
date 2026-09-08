@@ -137,3 +137,54 @@ def test_run_walk_forward_backtest_returns_expected_outputs():
 
   assert "Estratégia Quant" in result["performance"].columns
   assert "SPY" in result["performance"].columns
+
+def test_backtest_includes_final_holding_period():
+  prices, volumes = make_synthetic_market_data()
+
+  result = run_walk_forward_backtest(
+    prices=prices,
+    volumes=volumes,
+    start_date="2020-03-01",
+    end_date="2021-12-31",
+    top_n=2,
+    benchmark="SPY",
+    frequency="M",
+  )
+
+  last_strategy_date = result["strategy_returns"].index.max()
+
+  assert last_strategy_date.month == 12
+  assert last_strategy_date.year == 2021
+
+def test_transaction_costs_reduce_strategy_performance():
+  prices, volumes = make_synthetic_market_data()
+
+  without_costs = run_walk_forward_backtest(
+    prices=prices,
+    volumes=volumes,
+    start_date="2020-03-01",
+    end_date="2021-12-31",
+    top_n=2,
+    benchmark="SPY",
+    frequency="M",
+    transaction_cost=0.0,
+    slippage=0.0,
+  )
+
+  with_costs = run_walk_forward_backtest(
+    prices=prices,
+    volumes=volumes,
+    start_date="2020-03-01",
+    end_date="2021-12-31",
+    top_n=2,
+    benchmark="SPY",
+    frequency="M",
+    transaction_cost=0.005,
+    slippage=0.005,
+  )
+
+  assert (
+    with_costs["strategy_metrics"]["total_return"]
+    <
+    without_costs["strategy_metrics"]["total_return"]
+  )
