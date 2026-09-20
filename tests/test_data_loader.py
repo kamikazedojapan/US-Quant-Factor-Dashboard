@@ -101,6 +101,7 @@ class TestDownloadMarketData(unittest.TestCase):
       end="2025-02-01",
       auto_adjust=True,
       progress=False,
+      threads=True,
       group_by="column"
     )
 
