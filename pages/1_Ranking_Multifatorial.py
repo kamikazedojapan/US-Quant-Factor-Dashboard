@@ -237,6 +237,20 @@ col2.metric("Ações no Top Ranking", len(top_quant_tickers))
 col3.metric("Setor", selected_sector)
 col4.metric("Benchmark", "SPY" if show_spy else "Não utilizado")
 
+if quant_portfolio:
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("Retorno Total", f"{quant_portfolio['total_return']:.2%}")
+    col2.metric("CAGR", f"{quant_portfolio['cagr']:.2%}")
+    col3.metric("Volatilidade", f"{quant_portfolio['volatility']:.2%}")
+    col4.metric("Max Drawdown", f"{quant_portfolio['max_drawdown']:.2%}")
+
+    col5, col6 = st.columns(2)
+    col5.metric("Sharpe Ratio", f"{quant_portfolio['sharpe']:.2f}")
+    col6.metric("Ações no Top Ranking", len(top_quant_tickers))
+
+else:
+    st.warning("Não foi possível calcular a carteira quantitativa.")
 
 st.markdown("---")
 
@@ -329,26 +343,6 @@ st.dataframe(
     ),
     use_container_width=True,
 )
-
-
-if quant_portfolio:
-    st.markdown("---")
-    st.subheader("Resumo da Carteira Quantitativa")
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric("Retorno Total", f"{quant_portfolio['total_return']:.2%}")
-    col2.metric("CAGR", f"{quant_portfolio['cagr']:.2%}")
-    col3.metric("Volatilidade", f"{quant_portfolio['volatility']:.2%}")
-    col4.metric("Max Drawdown", f"{quant_portfolio['max_drawdown']:.2%}")
-
-    col5, col6 = st.columns(2)
-    col5.metric("Sharpe Ratio", f"{quant_portfolio['sharpe']:.2f}")
-    col6.metric("Ações no Top Ranking", len(top_quant_tickers))
-
-else:
-    st.warning("Não foi possível calcular a carteira quantitativa.")
-
 
 st.markdown("---")
 

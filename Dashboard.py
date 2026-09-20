@@ -22,9 +22,6 @@ st.set_page_config(
 )
 
 st.title("US Quant Factor Dashboard")
-st.caption(
-    "Dashboard quantitativo para análise de ações americanas com foco em retorno, risco, liquidez e ranking multifatorial."
-)
 
 sp500_df = get_sp500_tickers()
 
@@ -316,10 +313,10 @@ st.subheader("Resumo da Carteira Quantitativa")
 if quant_portfolio:
   col1, col2, col3, col4 = st.columns(4)
 
-  col1.metric("Retorno Total", f"{quant_portfolio['total_return']:.2f}")
-  col2.metric("CAGR", f"{quant_portfolio['cagr']:.2f}")
-  col3.metric("Volatilidade", f"{quant_portfolio['volatility']:.2f}")
-  col4.metric("Max Drawdown", f"{quant_portfolio['max_drawdown']:.2f}")
+  col1.metric("Retorno Total", f"{quant_portfolio['total_return']:.2%}")
+  col2.metric("CAGR", f"{quant_portfolio['cagr']:.2%}")
+  col3.metric("Volatilidade", f"{quant_portfolio['volatility']:.2%}")
+  col4.metric("Max Drawdown", f"{quant_portfolio['max_drawdown']:.2%}")
 
   col5, col6 = st.columns(2)
   col5.metric("Sharpe Ratio", f"{quant_portfolio['sharpe']:.2f}")
