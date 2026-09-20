@@ -244,11 +244,9 @@ if backtest_end <= backtest_start:
   st.error("A data final deve ser posterior à data inicial.")
   st.stop()
 
-download_tickers = selected_tickers.copy()
-
-if "SPY" not in download_tickers:
-  download_tickers.append("SPY")
-
+download_tickers = sorted(
+  set(selected_tickers + ["SPY"])
+)
 
 formation_download_start = backtest_start - pd.DateOffset(months=18)
 

@@ -61,12 +61,20 @@ def extract_market_data(data, tickers):
 
   return prices, volumes
 
-@st.cache_data(show_spinner=True)
+@st.cache_data(ttl=3600, show_spinner=False)
 def download_market_data(tickers, start_date, end_date):
   """
   Baixa preços ajustados e volumes dos tickers
   selecionados usando yfinance.
   """
+  tickers = sorted(
+    set(
+      str(ticker).upper().strip()
+      for ticker in tickers
+      if ticker
+    )
+  )
+  
   if not tickers:
     return pd.DataFrame(), pd.DataFrame()
 
