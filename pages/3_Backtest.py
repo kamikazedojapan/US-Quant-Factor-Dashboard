@@ -72,15 +72,48 @@ with st.sidebar:
   if not default_tickers:
     default_tickers = tickers_list[:10]
 
-  if use_all_tickers:
-    selected_tickers = tickers_list
-    st.caption(f"{len(selected_tickers)} ações selecionadas.")
-  else:
+  universe_mode = st.selectbox(
+    "Tamanho do universo",
+    options=[
+      "Manual",
+      "Rápido - 10 ações",
+      "Médio - 25 ações",
+      "Amplo - 50 ações",
+      "Grande - 100 ações",
+      "Completo - todas",
+    ],
+    key="backtest_universe_mode",
+  )
+
+  if universe_mode == "Manual":
     selected_tickers = st.multiselect(
       "Selecione as ações do universo",
       options=tickers_list,
       default=default_tickers,
       key=f"backtest_selected_tickers_{selected_sector}",
+    )
+
+  elif universe_mode == "Rápido - 10 ações":
+    selected_tickers = tickers_list[:10]
+
+  elif universe_mode == "Médio - 25 ações":
+    selected_tickers = tickers_list[:25]
+
+  elif universe_mode == "Amplo - 50 ações":
+    selected_tickers = tickers_list[:50]
+
+  elif universe_mode == "Grande - 100 ações":
+    selected_tickers = tickers_list[:100]
+
+  else:
+    selected_tickers = tickers_list
+
+  st.caption(f"{len(selected_tickers)} ações no universo selecionado.")
+
+  if len(selected_tickers) >= 100:
+    st.warning(
+      "Universos com 100 ou mais ações podem deixar o download e o backtest "
+      "mais lentos, principalmente usando Yahoo Finance/yfinance."
     )
 
   st.markdown("---")
