@@ -5,6 +5,7 @@ import streamlit as st
 
 from src.backtester import run_walk_forward_backtest
 from src.data_loader import download_market_data, get_sp500_tickers
+from src.universe import select_balanced_tickers_by_sector
 
 st.set_page_config(
   page_title="Backtest",
@@ -21,11 +22,22 @@ st.caption(
 sp500_df = get_sp500_tickers()
 sp500_df["sector"] = sp500_df["sector"].fillna("Sem setor")
 
-sector_options = ["Todos"] + sorted(
-  sp500_df["sector"].dropna().unique().tolist()
-)
+sector_options = ["Todos"] + sorted(sp500_df["sector"].dropna().unique().tolist())
 
 with st.sidebar:
+  universe_size_options = {
+    "Manual": None,
+    "Rápido - 10 ações": 10,
+    "Médio - 25 ações": 25,
+    "Amplo - 50 ações": 50,
+    "Grande - 100 ações": 100,
+    "Enorme - 150 ações": 150,
+    "Institucional - 200 ações": 200,
+    "S&P amplo - 300 ações": 300,
+    "S&P quase completo - 400 ações": 400,
+    "S&P 500 - todas": "all",
+  }
+
   st.header("Configurações de Backtest")
   selected_sector = st.selectbox(
     "Filtrar por setor",
@@ -36,21 +48,13 @@ with st.sidebar:
   if selected_sector == "Todos":
     filtered_sp500_df = sp500_df.copy()
   else:
-    filtered_sp500_df = sp500_df[
-      sp500_df["sector"] == selected_sector
-    ].copy()
+    filtered_sp500_df = sp500_df[sp500_df["sector"] == selected_sector].copy()
 
   tickers_list = filtered_sp500_df["ticker"].dropna().astype(str).tolist()
 
   if not tickers_list:
     st.warning("Nenhuma ação foi encontrada para o setor selecionado.")
     st.stop()
-
-  use_all_tickers = st.checkbox(
-    "Usar todas as ações do filtro",
-    value=False,
-    key="backtest_use_all_tickers",
-  )
 
   default_tickers = [
     ticker
@@ -74,18 +78,13 @@ with st.sidebar:
 
   universe_mode = st.selectbox(
     "Tamanho do universo",
-    options=[
-      "Manual",
-      "Rápido - 10 ações",
-      "Médio - 25 ações",
-      "Amplo - 50 ações",
-      "Grande - 100 ações",
-      "Completo - todas",
-    ],
+    options=list(universe_size_options.keys()),
     key="backtest_universe_mode",
   )
 
-  if universe_mode == "Manual":
+  selected_universe_size = universe_size_options[universe_mode]
+
+  if selected_universe_size is None:
     selected_tickers = st.multiselect(
       "Selecione as ações do universo",
       options=tickers_list,
@@ -93,27 +92,21 @@ with st.sidebar:
       key=f"backtest_selected_tickers_{selected_sector}",
     )
 
-  elif universe_mode == "Rápido - 10 ações":
-    selected_tickers = tickers_list[:10]
-
-  elif universe_mode == "Médio - 25 ações":
-    selected_tickers = tickers_list[:25]
-
-  elif universe_mode == "Amplo - 50 ações":
-    selected_tickers = tickers_list[:50]
-
-  elif universe_mode == "Grande - 100 ações":
-    selected_tickers = tickers_list[:100]
+  elif selected_universe_size == "all":
+    selected_tickers = tickers_list
 
   else:
-    selected_tickers = tickers_list
+    selected_tickers = select_balanced_tickers_by_sector(
+      stocks_df=filtered_sp500_df,
+      max_tickers=selected_universe_size,
+    )
 
   st.caption(f"{len(selected_tickers)} ações no universo selecionado.")
 
   if len(selected_tickers) >= 100:
     st.warning(
       "Universos com 100 ou mais ações podem deixar o download e o backtest "
-      "mais lentos, principalmente usando Yahoo Finance/yfinance."
+      "mais lentos, mesmo com cache e download em blocos."
     )
 
   st.markdown("---")
@@ -244,9 +237,7 @@ if backtest_end <= backtest_start:
   st.error("A data final deve ser posterior à data inicial.")
   st.stop()
 
-download_tickers = sorted(
-  set(selected_tickers + ["SPY"])
-)
+download_tickers = sorted(set(selected_tickers + ["SPY"]))
 
 formation_download_start = backtest_start - pd.DateOffset(months=18)
 
@@ -259,15 +250,12 @@ with st.spinner("Baixando os dados de mercado..."):
 
 if prices.empty:
   st.error(
-    "Não foi possível baixar os dados. "
-    "Verifique os tickers ou o período escolhido."
+    "Não foi possível baixar os dados. Verifique os tickers ou o período escolhido."
   )
   st.stop()
 
 available_selected_tickers = [
-  ticker
-  for ticker in selected_tickers
-  if ticker in prices.columns
+  ticker for ticker in selected_tickers if ticker in prices.columns
 ]
 
 if not available_selected_tickers:
@@ -276,8 +264,7 @@ if not available_selected_tickers:
 
 if "SPY" not in prices.columns:
   st.error(
-    "Não foi possível obter os dados do SPY. "
-    "O benchmark é necessário para o backtest."
+    "Não foi possível obter os dados do SPY. O benchmark é necessário para o backtest."
   )
   st.stop()
 
@@ -391,9 +378,7 @@ elif better_count == 2:
     "turnover e consistência antes de concluir."
   )
 else:
-  st.error(
-    "A estratégia ficou fraca em relação ao SPY neste período."
-  )
+  st.error("A estratégia ficou fraca em relação ao SPY neste período.")
 
 st.markdown("---")
 
@@ -440,9 +425,7 @@ else:
 
   for column in percent_columns:
     if column in formatted_log.columns:
-      formatted_log[column] = formatted_log[column].map(
-        lambda value: f"{value:.2%}"
-      )
+      formatted_log[column] = formatted_log[column].map(lambda value: f"{value:.2%}")
 
   st.dataframe(
     formatted_log,
