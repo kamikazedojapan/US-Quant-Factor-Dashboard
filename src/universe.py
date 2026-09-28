@@ -29,6 +29,13 @@ def select_balanced_tickers_by_sector(
     ]
   ].copy()
 
+  clean_df = clean_df.dropna(
+    subset=[
+      ticker_column,
+      sector_column,
+    ]
+  )
+
   clean_df[ticker_column] = clean_df[ticker_column].astype(str).str.upper().str.strip()
 
   clean_df[sector_column] = clean_df[sector_column].astype(str).str.strip()
