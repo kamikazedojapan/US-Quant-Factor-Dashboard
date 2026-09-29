@@ -322,7 +322,7 @@ if quant_portfolio:
   col5.metric("Sharpe Ratio", f"{quant_portfolio['sharpe']:.2f}")
   col6.metric("Ações no Top Ranking", len(top_quant_tickers))
 else:
-  st.waring("Não foi possível calcular a carteira quantitativa.")
+  st.warning("Não foi possível calcular a carteira quantitativa.")
 
 diagnosis_df, diagnosis_summary = build_portfolio_diagnosis(
   portfolio=quant_portfolio,

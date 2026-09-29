@@ -28,8 +28,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      - name: Run unit tests
-        run: python -m unittest discover -s tests -v
+      - name: Run tests
+        run: python -m pytest
 
       - name: Check Python syntax
-        run: python -m compileall -q Dashboard.py pages src tests
+        run: python -m compileall -q Dashboard.py pages src scripts tests
