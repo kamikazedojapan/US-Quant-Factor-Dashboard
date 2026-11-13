@@ -1,5 +1,6 @@
 """Ranking multifatorial diário da Home, com calendário e snapshot de segurança."""
 
+import hashlib
 import json
 import logging
 import os
@@ -21,6 +22,30 @@ DEFAULT_SNAPSHOT_PATH = (
 SNAPSHOT_VERSION = 1
 MINIMUM_HISTORY = 253
 MINIMUM_VOLUME_HISTORY = 60
+# Incrementar ao mudar os fatores/critério de elegibilidade/scoring.
+HOME_RANKING_ALGORITHM_VERSION = 1
+
+
+def _ranking_spec(benchmark="SPY", lookback_months=18,
+                  momentum_weight=40, risk_weight=35, liquidity_weight=25):
+  """Identificador explícito da metodologia que gerou o snapshot."""
+  return (
+    f"v{HOME_RANKING_ALGORITHM_VERSION}|{benchmark}|{lookback_months}|"
+    f"{momentum_weight}|{risk_weight}|{liquidity_weight}"
+  )
+
+
+def _universe_fingerprint(stocks_df):
+  """Hash do conjunto de tickers; detecta alteração do universo sem baixar preços."""
+  if "ticker" not in stocks_df.columns:
+    raise ValueError("Universo sem coluna ticker")
+  tickers = (
+    stocks_df["ticker"].astype("string").str.upper().str.strip().dropna()
+  )
+  tickers = sorted({value for value in tickers.tolist() if value})
+  if not tickers:
+    raise ValueError("Universo sem tickers")
+  return hashlib.sha256("\n".join(tickers).encode("utf-8")).hexdigest()
 
 
 class RankingUnavailableError(RuntimeError):
@@ -217,6 +242,10 @@ def load_latest_multifactor_ranking(
     "universe_size": len(tickers),
     "eligible_count": len(full_ranking),
     "returned_count": len(ranking),
+    "universe_fingerprint": _universe_fingerprint(stocks_df),
+    "ranking_spec": _ranking_spec(
+      benchmark, lookback_months, momentum_weight, risk_weight, liquidity_weight
+    ),
     "source": "live",
   }
   return ranking, info
@@ -234,6 +263,9 @@ def save_ranking_snapshot(ranking, ranking_info, path=DEFAULT_SNAPSHOT_PATH):
     "eligible_count": int(ranking_info["eligible_count"]),
     "returned_count": int(len(ranking)),
   }
+  for key in ("universe_fingerprint", "ranking_spec"):
+    if key in ranking_info:
+      metadata[key] = ranking_info[key]
   payload = {
     "version": SNAPSHOT_VERSION,
     "ranking": json.loads(ranking.to_json(orient="records", date_format="iso")),
@@ -286,11 +318,50 @@ def load_ranking_snapshot(path=DEFAULT_SNAPSHOT_PATH):
     return None
 
 
+def _is_current_home_snapshot(ranking, info, max_top_n):
+  """Snapshot reutilizável apenas quando data, universo e metodologia coincidem.
+
+  Snapshots legados, sem fingerprint/spec, permanecem disponíveis SOMENTE como
+  fallback com aviso de dados antigos (nunca como ranking atual garantido).
+  """
+  try:
+    if max_top_n <= 0:
+      return False
+    if pd.Timestamp(info["as_of_date"]) != get_latest_complete_nyse_session():
+      return False
+    if info.get("ranking_spec") != _ranking_spec():
+      return False
+    if info.get("universe_fingerprint") != _universe_fingerprint(get_sp500_tickers()):
+      return False
+    eligible_count = int(info["eligible_count"])
+    if eligible_count <= 0 or len(ranking) < min(max_top_n, eligible_count):
+      return False
+    return True
+  except (ValueError, KeyError, TypeError, AttributeError, OSError):
+    return False
+
+
 def load_home_ranking_with_fallback(
   max_top_n=50,
   snapshot_path=DEFAULT_SNAPSHOT_PATH,
+  force_refresh=False,
 ):
-  """Prefere cálculo atual; em falha usa a última execução válida gravada."""
+  """Reusa snapshot atual; recalcula ao trocar sessão/universo ou forçar refresh.
+
+  Falhas de atualização usam o último snapshot, inclusive antigo, com aviso.
+  """
+  if max_top_n <= 0:
+    raise ValueError("max_top_n deve ser maior que zero.")
+
+  if not force_refresh:
+    saved = load_ranking_snapshot(snapshot_path)
+    if saved is not None and _is_current_home_snapshot(*saved, max_top_n):
+      cached_ranking, cached_info = saved
+      cached_info["source"] = "snapshot_current"
+      result = cached_ranking.head(max_top_n).copy()
+      cached_info["returned_count"] = len(result)
+      return result, cached_info
+
   try:
     ranking, info = load_latest_multifactor_ranking(max_top_n=max_top_n)
   except Exception as error:
