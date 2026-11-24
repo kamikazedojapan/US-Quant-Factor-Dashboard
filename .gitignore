@@ -9,9 +9,6 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Streamlit
-.streamlit/
-
 # Dados locais
 data/cache/
 *.xlsx
