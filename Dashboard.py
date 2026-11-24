@@ -28,4 +28,49 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    navigation = st.navigation(
+        {
+            "": [
+                st.Page(
+                    main,
+                    title="Visão Geral",
+                    icon=":material/dashboard:",
+                    default=True,
+                ),
+            ],
+            "Pesquisa": [
+                st.Page(
+                    "pages/1_Ranking_Multifatorial.py",
+                    title="Ranking Multifatorial",
+                    icon=":material/leaderboard:",
+                ),
+                st.Page(
+                    "pages/2_Analise_Ativo.py",
+                    title="Análise do Ativo",
+                    icon=":material/search:",
+                ),
+                st.Page(
+                    "pages/2_Analise_Personalizada.py",
+                    title="Análise Personalizada",
+                    icon=":material/tune:",
+                ),
+            ],
+            "Estratégias": [
+                st.Page(
+                    "pages/3_Backtest.py",
+                    title="Backtest",
+                    icon=":material/query_stats:",
+                ),
+            ],
+            "Sobre": [
+                st.Page(
+                    "pages/4_Metodologia.py",
+                    title="Metodologia",
+                    icon=":material/menu_book:",
+                ),
+            ],
+        },
+        position="top",
+    )
+
+    navigation.run()
