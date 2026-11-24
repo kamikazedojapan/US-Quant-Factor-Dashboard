@@ -9,6 +9,7 @@ from src.ranking import (
     get_latest_complete_nyse_session,
     load_home_ranking_with_fallback,
 )
+from src.ui.metric_cards import render_ranking_metrics
 
 HOME_RANKING_OPTIONS = [10, 20, 50]
 HOME_RANKING_MAX = max(HOME_RANKING_OPTIONS)
@@ -43,11 +44,10 @@ def render_latest_ranking_section():
   O usuário pode visualizar Top 10, Top 20 ou Top 50.
   """
 
-  st.subheader("Ranking Multifatorial Atual")
+  st.subheader("Visão geral do mercado")
 
   st.caption(
-    "Ranking automático do universo atual do S&P 500, "
-    "baseado em Momentum, Baixo Risco e Liquidez."
+    "Indicadores do ranking multifatorial"
   )
 
   col_selector, col_refresh = st.columns(
@@ -134,27 +134,14 @@ def render_latest_ranking_section():
     0,
   )
 
-  col1, col2, col3, col4 = st.columns(4)
+# as_of_date, universe_size, eligible_count, len(ranking_display)
 
-  col1.metric(
-    "Dados até",
-    as_of_date,
-  )
-
-  col2.metric(
-    "Universo",
-    universe_size,
-  )
-
-  col3.metric(
-    "Ações elegíveis",
-    eligible_count,
-  )
-
-  col4.metric(
-    "Ranking exibido",
-    f"Top {len(ranking_display)}",
-  )
+  render_ranking_metrics(
+      as_of_date=as_of_date,
+      universe_size=universe_size,
+      eligible_count=eligible_count,
+      displayed_count=len(ranking_display),
+    )
 
   # ----------------------------------------------------------
   # Colunas exibidas
