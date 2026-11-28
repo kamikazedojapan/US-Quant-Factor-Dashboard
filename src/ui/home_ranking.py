@@ -2,12 +2,13 @@
 
 import pandas as pd
 import streamlit as st
+import plotly.graph_objects as go
 
 from src.data_loader import download_market_data
 from src.ranking import (
-    RankingUnavailableError,
-    get_latest_complete_nyse_session,
-    load_home_ranking_with_fallback,
+  RankingUnavailableError,
+  get_latest_complete_nyse_session,
+  load_home_ranking_with_fallback,
 )
 from src.ui.metric_cards import render_ranking_metrics
 
@@ -46,9 +47,7 @@ def render_latest_ranking_section():
 
   st.subheader("Visão geral do mercado")
 
-  st.caption(
-    "Indicadores do ranking multifatorial"
-  )
+  st.caption("Indicadores do ranking multifatorial")
 
   col_selector, col_refresh = st.columns(
     [3, 1],
@@ -101,15 +100,10 @@ def render_latest_ranking_section():
     )
 
   if latest_ranking.empty:
-    st.warning(
-      "Nenhuma ação elegível foi encontrada "
-      "para o ranking atual."
-    )
+    st.warning("Nenhuma ação elegível foi encontrada para o ranking atual.")
     return
 
-  ranking_display = latest_ranking.head(
-    ranking_top_n
-  ).copy()
+  ranking_display = latest_ranking.head(ranking_top_n).copy()
 
   # ----------------------------------------------------------
   # Resumo do ranking
@@ -118,9 +112,7 @@ def render_latest_ranking_section():
   as_of_date = ranking_info.get("as_of_date")
 
   if as_of_date is not None:
-    as_of_date = pd.Timestamp(
-      as_of_date
-    ).strftime("%d/%m/%Y")
+    as_of_date = pd.Timestamp(as_of_date).strftime("%d/%m/%Y")
   else:
     as_of_date = "N/D"
 
@@ -134,14 +126,56 @@ def render_latest_ranking_section():
     0,
   )
 
-# as_of_date, universe_size, eligible_count, len(ranking_display)
-
   render_ranking_metrics(
-      as_of_date=as_of_date,
-      universe_size=universe_size,
-      eligible_count=eligible_count,
-      displayed_count=len(ranking_display),
+    as_of_date=as_of_date,
+    universe_size=universe_size,
+    eligible_count=eligible_count,
+    displayed_count=len(ranking_display),
+  )
+
+  chart_data = ranking_display[["ticker", "score_preliminar"]].copy()
+
+  chart_data["score_preliminar"] = pd.to_numeric(
+    chart_data["score_preliminar"],
+    errors="coerce",
+  )
+
+  chart_data = chart_data.dropna(subset=["score_preliminar"]).iloc[::-1]
+
+  fig = go.Figure(
+    go.Bar(
+      x=chart_data["score_preliminar"],
+      y=chart_data["ticker"],
+      orientation="h",
+      marker_color="#8B5CF6",
+      hovertemplate=("<b>%{y}</b><br>Score multifatorial: %{x:.2f}<extra></extra>"),
     )
+  )
+
+  fig.update_layout(
+    height=max(380, len(chart_data) * 32 + 110),
+    margin=dict(l=10, r=20, t=20, b=30),
+    paper_bgcolor="#0B1220",
+    plot_bgcolor="#0B1220",
+    font=dict(color="#F8FAFC"),
+    xaxis=dict(
+      title="Score multifatorial",
+      gridcolor="#263249",
+      zeroline=False,
+    ),
+    yaxis=dict(
+      title="Ticker",
+      categoryorder="array",
+      categoryarray=chart_data["ticker"].tolist(),
+    ),
+    showlegend=False,
+  )
+
+  st.plotly_chart(
+    fig,
+    width="stretch",
+    config={"displaylogo": False},
+  )
 
   # ----------------------------------------------------------
   # Colunas exibidas
@@ -159,15 +193,11 @@ def render_latest_ranking_section():
   ]
 
   available_ranking_columns = [
-    column
-    for column in ranking_columns
-    if column in ranking_display.columns
+    column for column in ranking_columns if column in ranking_display.columns
   ]
 
   st.dataframe(
-    ranking_display[
-      available_ranking_columns
-    ],
+    ranking_display[available_ranking_columns],
     use_container_width=True,
     hide_index=True,
     column_config={
@@ -211,10 +241,7 @@ def render_latest_ranking_section():
     },
   )
 
-  st.caption(
-    "Pesos atuais: Momentum 40% | "
-    "Baixo Risco 35% | Liquidez 25%."
-  )
+  st.caption("Pesos atuais: Momentum 40% | Baixo Risco 35% | Liquidez 25%.")
 
   st.caption(
     "O ranking usa a última sessão completa da NYSE e permanece "
