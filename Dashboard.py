@@ -61,6 +61,11 @@ if __name__ == "__main__":
                     title="Backtest",
                     icon=":material/query_stats:",
                 ),
+                st.Page(
+                    "pages/5_Painel_Estrategico.py",
+                    title="Painel Estratégico",
+                    icon=":material/monitoring:",
+                ),
             ],
             "Sobre": [
                 st.Page(
@@ -70,7 +75,6 @@ if __name__ == "__main__":
                 ),
             ],
         },
-        position="top",
     )
 
     navigation.run()
