@@ -9,9 +9,6 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Streamlit
-.streamlit/
-
 # Dados locais
 data/cache/
 *.xlsx
@@ -23,3 +20,5 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+scripts/CAGR.py
